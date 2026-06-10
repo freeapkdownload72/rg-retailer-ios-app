@@ -21,12 +21,9 @@ workflows:
     scripts:
       - name: Install Node.js dependencies
         script: |
-          # Clean install for macOS: Vite 8 uses Rolldown which needs platform-specific native bindings
+          # Remove Windows-generated lockfile for clean macOS install
           rm -f package-lock.json
-          rm -rf node_modules
-          npm install --force
-          # Ensure the macOS-specific Rolldown native binding is installed
-          npm install @rolldown/binding-darwin-universal --force || true
+          npm install
       - name: Build web application
         script: |
           npm run build
