@@ -7,7 +7,7 @@ workflows:
       app_store_connect: AppStore Connect
     environment:
       node: v22.15.0
-      xcode: latest
+      xcode: 16.2
       vars:
         BUNDLE_ID: "com.rgretailer.companion"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
@@ -54,11 +54,10 @@ workflows:
             --scheme "$XCODE_SCHEME"
       - name: Publish to App Store Connect
         script: |
-          # Use xcrun altool directly with explicit Apple ID
+          # Use xcrun altool to upload to App Store Connect
           xcrun altool --upload-app \
             -f build/ios/ipa/App.ipa \
             --type ios \
-            --apple-id 6778791443 \
             --apiKey "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
             --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" \
             --show-progress
