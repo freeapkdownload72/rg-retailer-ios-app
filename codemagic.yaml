@@ -35,7 +35,8 @@ workflows:
           keychain initialize
       - name: Fetch signing files from Apple
         script: |
-          # Use the persistent private key stored in Codemagic environment variables
+          # Generate a private key inline for certificate creation
+          export CERTIFICATE_PRIVATE_KEY="$(openssl genrsa 2048 2>/dev/null)"
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --create \
