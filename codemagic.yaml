@@ -7,7 +7,7 @@ workflows:
       app_store_connect: AppStore Connect
     environment:
       node: v22.15.0
-      xcode: 16.4
+      xcode: latest
       vars:
         BUNDLE_ID: "com.rgretailer.companion"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
@@ -21,7 +21,6 @@ workflows:
     scripts:
       - name: Install Node.js dependencies
         script: |
-          # Remove Windows-generated lockfile for clean macOS install
           rm -f package-lock.json
           npm install
       - name: Build web application
@@ -35,7 +34,6 @@ workflows:
           keychain initialize
       - name: Fetch signing files from Apple
         script: |
-          # Generate a private key inline for certificate creation
           export CERTIFICATE_PRIVATE_KEY="$(openssl genrsa 2048 2>/dev/null)"
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
@@ -52,17 +50,6 @@ workflows:
           xcode-project build-ipa \
             --project "$XCODE_PROJECT" \
             --scheme "$XCODE_SCHEME"
-      - name: Debug - List apps visible to API key
-        script: |
-          echo "=== Listing all apps visible to this API key ==="
-          app-store-connect apps list || echo "apps list command failed"
-          echo ""
-          echo "=== Checking API key details ==="
-          echo "Key ID: $APP_STORE_CONNECT_KEY_IDENTIFIER"
-          echo "Issuer ID: $APP_STORE_CONNECT_ISSUER_ID"
-          echo ""
-          echo "=== Trying to find app by bundle ID ==="
-          app-store-connect apps list --bundle-id-identifier="com.rgretailer.companion" || echo "Bundle ID lookup failed"
       - name: Publish to App Store Connect
         script: |
           app-store-connect publish \
