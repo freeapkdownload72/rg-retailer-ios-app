@@ -35,10 +35,13 @@ workflows:
           keychain initialize
       - name: Fetch signing files from Apple
         script: |
-          # --create flag ensures the profile is created if it doesn't exist yet
+          # Generate a private key for certificate creation/matching
+          openssl genrsa 2048 > /tmp/cert_key.pem
+          # Fetch or create distribution certificate and provisioning profile
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
-            --create
+            --create \
+            --certificate-key=/tmp/cert_key.pem
       - name: Add certificates to keychain
         script: |
           keychain add-certificates
