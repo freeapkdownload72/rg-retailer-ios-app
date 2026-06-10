@@ -52,12 +52,19 @@ workflows:
           xcode-project build-ipa \
             --project "$XCODE_PROJECT" \
             --scheme "$XCODE_SCHEME"
+      - name: Publish to App Store Connect
+        script: |
+          app-store-connect publish \
+            --path build/ios/ipa/App.ipa \
+            --apple-id 6778791443
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
       - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
     publishing:
-      app_store_connect:
-        auth: integration
-        apple_id: "6778791443"
-        submit_to_testflight: true
+      email:
+        recipients:
+          - rajatgrover971@gmail.com
+        notify:
+          success: true
+          failure: true
