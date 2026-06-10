@@ -21,7 +21,9 @@ workflows:
     scripts:
       - name: Install Node.js dependencies
         script: |
-          npm ci || npm install
+          # Remove Windows-generated lockfile so macOS-native bindings get installed
+          rm -f package-lock.json
+          npm install
       - name: Build web application
         script: |
           npm run build
