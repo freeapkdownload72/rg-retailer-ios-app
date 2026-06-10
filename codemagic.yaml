@@ -7,7 +7,7 @@ workflows:
       app_store_connect: AppStore Connect
     environment:
       node: v22.15.0
-      xcode: 16.2
+      xcode: 16.4
       vars:
         BUNDLE_ID: "com.rgretailer.companion"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
