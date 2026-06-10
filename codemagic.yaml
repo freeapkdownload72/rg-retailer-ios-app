@@ -54,13 +54,8 @@ workflows:
             --scheme "$XCODE_SCHEME"
       - name: Publish to App Store Connect
         script: |
-          # Use xcrun altool to upload to App Store Connect
-          xcrun altool --upload-app \
-            -f build/ios/ipa/App.ipa \
-            --type ios \
-            --apiKey "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
-            --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" \
-            --show-progress
+          app-store-connect publish \
+            --path build/ios/ipa/App.ipa
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
