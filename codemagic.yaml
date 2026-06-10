@@ -6,7 +6,7 @@ workflows:
     integrations:
       app_store_connect: AppStore Connect
     environment:
-      node: v20.18.0
+      node: v22.15.0
       xcode: latest
       vars:
         BUNDLE_ID: "com.rgretailer.companion"
