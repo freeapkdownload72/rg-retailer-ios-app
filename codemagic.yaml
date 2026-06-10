@@ -8,10 +8,8 @@ workflows:
     environment:
       node: 20.x
       xcode: latest
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.rgretailer.companion
       vars:
+        BUNDLE_ID: "com.rgretailer.companion"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
     triggering:
@@ -30,66 +28,31 @@ workflows:
       - name: Sync Capacitor project (SPM)
         script: |
           npx cap sync ios
-      - name: Set up code signing
+      - name: Initialize keychain
         script: |
-          # Automatically downloads/configures profiles if App Store Connect API keys are configured,
-          # or if certificates and profiles have been uploaded under Team Settings > Code signing identities.
+          keychain initialize
+      - name: Fetch signing files from Apple
+        script: |
+          # --create flag ensures the profile is created if it doesn't exist yet
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+      - name: Add certificates to keychain
+        script: |
+          keychain add-certificates
+      - name: Apply code signing profiles to Xcode project
+        script: |
           xcode-project use-profiles
       - name: Build iOS IPA
         script: |
-          # Build the signed iOS application using the .xcodeproj file (SPM)
           xcode-project build-ipa \
             --project "$XCODE_PROJECT" \
-            --scheme "$XCODE_SCHEME" \
-            --ipa-directory "$FCI_BUILD_DIR/build/ios/ipa"
+            --scheme "$XCODE_SCHEME"
     artifacts:
       - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
     publishing:
       app_store_connect:
         auth: integration
         submit_to_testflight: true
-
-  ios-capacitor-simulator-unsigned:
-    name: iOS Capacitor Simulator Build (Unsigned)
-    max_build_duration: 60
-    instance_type: mac_mini_m2
-    environment:
-      node: 20.x
-      xcode: latest
-      vars:
-        XCODE_PROJECT: "ios/App/App.xcodeproj"
-        XCODE_SCHEME: "App"
-    triggering:
-      events:
-        - push
-      branch_patterns:
-        - pattern: main
-          include: true
-    scripts:
-      - name: Install Node.js dependencies
-        script: |
-          npm ci || npm install
-      - name: Build web application
-        script: |
-          npm run build
-      - name: Sync Capacitor project (SPM)
-        script: |
-          npx cap sync ios
-      - name: Build Unsigned Simulator App
-        script: |
-          # Build the simulator .app bundle without code signing
-          xcodebuild build \
-            -project "$XCODE_PROJECT" \
-            -scheme "$XCODE_SCHEME" \
-            -sdk iphonesimulator \
-            -configuration Debug \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            CONFIGURATION_BUILD_DIR=$FCI_BUILD_DIR/build/simulator
-      - name: Zip Simulator App
-        script: |
-          cd $FCI_BUILD_DIR/build/simulator
-          zip -r $FCI_BUILD_DIR/App-simulator.zip App.app
-    artifacts:
-      - App-simulator.zip
