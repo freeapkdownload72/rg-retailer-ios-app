@@ -52,6 +52,17 @@ workflows:
           xcode-project build-ipa \
             --project "$XCODE_PROJECT" \
             --scheme "$XCODE_SCHEME"
+      - name: Debug - List apps visible to API key
+        script: |
+          echo "=== Listing all apps visible to this API key ==="
+          app-store-connect apps list || echo "apps list command failed"
+          echo ""
+          echo "=== Checking API key details ==="
+          echo "Key ID: $APP_STORE_CONNECT_KEY_IDENTIFIER"
+          echo "Issuer ID: $APP_STORE_CONNECT_ISSUER_ID"
+          echo ""
+          echo "=== Trying to find app by bundle ID ==="
+          app-store-connect apps list --bundle-id-identifier="com.rgretailer.companion" || echo "Bundle ID lookup failed"
       - name: Publish to App Store Connect
         script: |
           app-store-connect publish \
