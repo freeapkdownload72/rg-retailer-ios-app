@@ -35,9 +35,7 @@ workflows:
           keychain initialize
       - name: Fetch signing files from Apple
         script: |
-          # Generate a private key and export as env var for certificate creation
-          export CERTIFICATE_PRIVATE_KEY="$(openssl genrsa 2048 2>/dev/null)"
-          # Fetch or create distribution certificate and provisioning profile
+          # Use the persistent private key stored in Codemagic environment variables
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --create \
@@ -58,13 +56,6 @@ workflows:
       - /tmp/xcodebuild_logs/*.log
       - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
     publishing:
-      email:
-        recipients:
-          - rajatgrover971@gmail.com
-        notify:
-          success: true
-          failure: true
-      # Uncomment below after creating the App in App Store Connect:
-      # app_store_connect:
-      #   auth: integration
-      #   submit_to_testflight: true
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
