@@ -1,0 +1,12 @@
+{
+  "appId": "com.rgretailer.companion",
+  "appName": "RG Retailer Etnic Wear",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "plugins": {
+    "FirebaseAuthentication": {
+      "skipNativeAuth": false,
+      "providers": ["phone", "google.com", "apple.com"]
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "860972932020",
+    "project_id": "rg-retailer-31026",
+    "storage_bucket": "rg-retailer-31026.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:860972932020:android:ff1a084b978658ae4370e1",
+        "android_client_info": {
+          "package_name": "com.rgretailer.companion"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "860972932020-hvgjst6g9cmude2ukh05nrh8vb8q523v.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rgretailer.companion",
+            "certificate_hash": "6a6330fc02d156e9fb0ea8e7615f928b39186f21"
+          }
+        },
+        {
+          "client_id": "860972932020-bmalcr6oipmp01j03fcol8cc375o74g0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCWkcxwUjssU14v88bmSMB3gwFOSsuorQ0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "860972932020-bmalcr6oipmp01j03fcol8cc375o74g0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
