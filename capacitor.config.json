@@ -4,6 +4,9 @@
   "webDir": "dist",
   "bundledWebRuntime": false,
   "plugins": {
+    "CapacitorHttp": {
+      "enabled": false
+    },
     "FirebaseAuthentication": {
       "skipNativeAuth": false,
       "providers": ["phone", "google.com", "apple.com"]

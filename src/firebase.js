@@ -51,7 +51,8 @@ try {
   if (isIOS) {
     console.log("Firebase Init: iOS/iPadOS environment detected. Initializing Firestore with Long Polling.");
     db = initializeFirestore(app, {
-      experimentalForceLongPolling: true
+      experimentalForceLongPolling: true,
+      useFetchStreams: false
     });
   } else {
     db = getFirestore(app);
