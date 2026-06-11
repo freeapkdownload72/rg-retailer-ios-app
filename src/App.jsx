@@ -6,13 +6,13 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { PushNotifications } from '@capacitor/push-notifications';
-import { 
-  collection, 
-  getDocs, 
-  addDoc, 
+import {
+  collection,
+  getDocs,
+  addDoc,
   getDoc,
-  doc, 
-  query, 
+  doc,
+  query,
   where,
   onSnapshot,
   updateDoc,
@@ -37,14 +37,14 @@ import ReferEarn from './components/ReferEarn';
 import EditProfile from './components/EditProfile';
 import Settings from './components/Settings';
 import TryOnStudio from './components/TryOnStudio';
-import { 
-  ShoppingBag, 
-  Heart, 
-  Eye, 
-  User, 
-  Search, 
-  Home, 
-  ShieldCheck, 
+import {
+  ShoppingBag,
+  Heart,
+  Eye,
+  User,
+  Search,
+  Home,
+  ShieldCheck,
   Sliders,
   Check,
   ChevronRight,
@@ -86,12 +86,12 @@ const createInvoicePDF = (order, storeSettings) => {
     // Top title stripe
     doc.setFillColor(245, 247, 250);
     doc.rect(10, 10, 190, 12, 'F');
-    
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.setTextColor(71, 85, 105);
     doc.text("TAX INVOICE / BILL OF SUPPLY", 15, 18);
-    
+
     // Brand/Seller Info
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
@@ -117,7 +117,7 @@ const createInvoicePDF = (order, storeSettings) => {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(71, 85, 105);
-    
+
     doc.text(`Invoice No:`, 130, 38);
     doc.text(`Invoice Date:`, 130, 43);
     doc.text(`Order ID:`, 130, 48);
@@ -163,11 +163,11 @@ const createInvoicePDF = (order, storeSettings) => {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(71, 85, 105);
-    
+
     const customerNameVal = order.customerName || 'Guest Customer';
     const customerPhoneVal = `Phone: ${order.phone || 'N/A'}`;
     const customerAddrText = doc.splitTextToSize(order.address || 'No address specified', 80);
-    
+
     doc.text([
       customerNameVal,
       customerPhoneVal,
@@ -201,9 +201,9 @@ const createInvoicePDF = (order, storeSettings) => {
     items.forEach((item, index) => {
       const itemLines = doc.splitTextToSize(item.name || 'Boutique Product', 95);
       const rowHeight = Math.max(itemLines.length * 4.5, 8);
-      
+
       doc.text(String(index + 1), 15, currentY + 5);
-      
+
       itemLines.forEach((line, lIdx) => {
         doc.text(line, 25, currentY + 5 + (lIdx * 4.5));
       });
@@ -299,7 +299,7 @@ const createInvoicePDF = (order, storeSettings) => {
     doc.setTextColor(71, 85, 105);
     doc.text(`For ${storeName}`, 195, footerY + 5, { align: 'right' });
     doc.text("Authorised Signatory", 195, footerY + 22, { align: 'right' });
-    
+
     return doc;
   } catch (e) {
     console.error("PDF generation failed:", e);
@@ -363,32 +363,32 @@ function App() {
   useEffect(() => {
     window.alert = (message) => {
       if (message === undefined || message === null) return;
-      
+
       const cleanMessage = String(message);
       let type = 'info';
       let title = 'Notification';
-      
+
       const lower = cleanMessage.toLowerCase();
       if (
-        lower.includes('fail') || 
-        lower.includes('error') || 
-        lower.includes('invalid') || 
-        lower.includes('blocked') || 
-        lower.includes('limit') || 
+        lower.includes('fail') ||
+        lower.includes('error') ||
+        lower.includes('invalid') ||
+        lower.includes('blocked') ||
+        lower.includes('limit') ||
         lower.includes('⚠️')
       ) {
         type = 'error';
         title = 'Error';
       } else if (
-        lower.includes('success') || 
-        lower.includes('completed') || 
-        lower.includes('done') || 
+        lower.includes('success') ||
+        lower.includes('completed') ||
+        lower.includes('done') ||
         lower.includes('🎉')
       ) {
         type = 'success';
         title = 'Success';
       }
-      
+
       setGlobalAlert({
         show: true,
         message: cleanMessage,
@@ -428,7 +428,7 @@ function App() {
   const [outfits, setOutfits] = useState([]);
   const [flashSales, setFlashSales] = useState([]);
   const [dbLoading, setDbLoading] = useState(true);
-  
+
   // Cart & checkout states
   const [cart, setCart] = useState([]);
   const [cartCheckoutStep, setCartCheckoutStep] = useState('bag');
@@ -496,11 +496,11 @@ function App() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         console.log("Firebase Auth State Changed: User Logged In:", user);
-        
+
         // Retrieve phone number and email
         const userPhone = user.phoneNumber ? user.phoneNumber.replace('+91', '').trim() : '';
         const userEmail = user.email || '';
-        
+
         // Attempt to find customer profile in Firestore
         let customerProfile = null;
         try {
@@ -510,7 +510,7 @@ function App() {
           } else if (userEmail) {
             q = query(collection(null, 'customers'), where('email', '==', userEmail));
           }
-          
+
           if (q) {
             const snap = await getDocs(q);
             customerProfile = await getBestCustomerProfile(snap.docs);
@@ -518,7 +518,7 @@ function App() {
         } catch (err) {
           console.error("Error checking customer profile in Firestore:", err);
         }
-        
+
         if (customerProfile) {
           // Returning User! Load profile automatically and skip quiz
           setIsReturningUser(true);
@@ -546,13 +546,13 @@ function App() {
         console.log("Firebase Auth State Changed: User Logged Out");
       }
     });
-    
+
     return () => unsubscribe();
   }, []);
 
   const handleTouchStart = (e) => {
     if (isRefreshing) return;
-    
+
     // Dynamically bubble up from target element to find the nearest scroll container
     let target = e.target;
     let scrollEl = null;
@@ -565,7 +565,7 @@ function App() {
       }
       target = target.parentElement;
     }
-    
+
     isAtTopRef.current = !scrollEl || scrollEl.scrollTop === 0;
     touchStartY.current = e.touches[0].clientY;
   };
@@ -574,7 +574,7 @@ function App() {
     if (isRefreshing || !isAtTopRef.current) return;
     const currentY = e.touches[0].clientY;
     const diffY = currentY - touchStartY.current;
-    
+
     if (diffY > 0) {
       const distance = Math.min(80, diffY * 0.4);
       setPullDistance(distance);
@@ -595,7 +595,7 @@ function App() {
   const triggerDataSync = async () => {
     setIsRefreshing(true);
     console.log("Pull-to-refresh: Starting boutique data synchronisation...");
-    
+
     try {
       const keysRef = doc(null, 'settings', 'api_keys');
       const keysSnap = await getDoc(keysRef);
@@ -655,12 +655,12 @@ function App() {
     return JSON.parse(localStorage.getItem('rg_wishlist') || '[]');
   });
   const [savedAddresses, setSavedAddresses] = useState([
-    { 
-      id: 'addr_default', 
-      name: 'Manisha Rawat (Home)', 
-      phone: '7425987654', 
-      detail: 'Flat 402, Royal Residency, Linking Road, Bandra West, Mumbai, Maharashtra - 400050', 
-      isDefault: true 
+    {
+      id: 'addr_default',
+      name: 'Manisha Rawat (Home)',
+      phone: '7425987654',
+      detail: 'Flat 402, Royal Residency, Linking Road, Bandra West, Mumbai, Maharashtra - 400050',
+      isDefault: true
     }
   ]);
   const [walletBalance, setWalletBalance] = useState(250.00);
@@ -690,12 +690,12 @@ function App() {
     if (!product) return 0;
     const basePrice = parseFloat(product.sellingPrice || 0);
     const todayStr = new Date().toISOString().split('T')[0];
-    
+
     const activeDiscounts = discountRules.filter(d => {
       if (d.isActive === false) return false;
       if (d.startDate && d.startDate > todayStr) return false;
       if (d.endDate && d.endDate < todayStr) return false;
-      
+
       if (d.appliesTo === 'All') return true;
       if (d.appliesTo === 'Collection' && d.targetCollection && product.category) {
         return String(product.category).trim().toUpperCase() === String(d.targetCollection).trim().toUpperCase();
@@ -872,7 +872,7 @@ function App() {
 
           if (keySecret) {
             const authHeader = 'Basic ' + btoa(keyId.trim() + ':' + keySecret.trim());
-            
+
             // 1. Get or Create Plan in Razorpay
             let razorpayPlanId = cycle === 'monthly' ? planDoc.data()?.razorpayPlanId_monthly : planDoc.data()?.razorpayPlanId_yearly;
 
@@ -895,11 +895,11 @@ function App() {
                   }
                 })
               });
-              
+
               if (planRes.ok) {
                 const planData = await planRes.json();
                 razorpayPlanId = planData.id;
-                
+
                 // Save plan ID to Firestore to reuse
                 const planRef = doc(null, 'membership_plans', tLower);
                 if (cycle === 'monthly') {
@@ -963,7 +963,7 @@ function App() {
                 paymentStatus: 'Paid',
                 razorpaySubscriptionId: resSubId
               };
-              
+
               if (subId) {
                 await updateDoc(doc(null, 'subscriptions', subId), finalSubData);
               } else {
@@ -1089,7 +1089,7 @@ function App() {
         if (!keySecret) return;
 
         const authHeader = 'Basic ' + btoa(keyId.trim() + ':' + keySecret.trim());
-        
+
         // Fetch subscription status directly from Razorpay REST API
         const response = await fetch(`https://api.razorpay.com/v1/subscriptions/${activeSubscription.razorpaySubscriptionId}`, {
           method: 'GET',
@@ -1101,10 +1101,10 @@ function App() {
         if (response.ok) {
           const rzpSub = await response.json();
           console.log("Synced active subscription from Razorpay:", rzpSub);
-          
+
           const status = rzpSub.status;
           const current_end = rzpSub.current_end; // unix timestamp in seconds
-          
+
           if (current_end) {
             const currentEndDate = new Date(current_end * 1000);
             const y = currentEndDate.getFullYear();
@@ -1467,7 +1467,7 @@ function App() {
     }
 
     const q = query(
-      collection(null, 'notifications'), 
+      collection(null, 'notifications'),
       where('phone', '==', customerPhone.trim())
     );
     const unsub = onSnapshot(q, (snap) => {
@@ -1695,7 +1695,7 @@ function App() {
         const regListener = await PushNotifications.addListener('registration', async (token) => {
           console.log('Push notification registration success, token:', token.value);
           localStorage.setItem('rg_fcm_token', token.value);
-          
+
           if (crmCustomer?.id) {
             try {
               const custRef = doc(null, 'customers', crmCustomer.id);
@@ -1754,7 +1754,7 @@ function App() {
     }
 
     setLoyaltyMessage("Checking CRM profile...");
-    
+
     // Clean up previous profile listener if any
     if (crmUnsubscribeRef.current) {
       crmUnsubscribeRef.current();
@@ -1763,7 +1763,7 @@ function App() {
 
     try {
       const q = query(collection(null, 'customers'), where('phone', '==', phoneVal.trim()));
-      
+
       const unsubscribe = onSnapshot(q, async (snap) => {
         try {
           const foundCustomer = await getBestCustomerProfile(snap.docs);
@@ -1827,7 +1827,7 @@ function App() {
     return () => {
       try {
         document.body.removeChild(script);
-      } catch (e) {}
+      } catch (e) { }
     };
   }, [isOnboarded]);
 
@@ -1859,7 +1859,7 @@ function App() {
         const cleanName = (crmCustomer.name || 'RG').replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase();
         const cleanPhone = (crmCustomer.phone || '0000').slice(-4);
         const generatedCode = `${cleanName}${cleanPhone}`;
-        
+
         const generateRefCode = async () => {
           try {
             const custRef = doc(null, 'customers', crmCustomer.id);
@@ -1908,7 +1908,7 @@ function App() {
 
       // Compile POS address fields if addresses array is empty or undefined
       if ((!crmCustomer.addresses || crmCustomer.addresses.length === 0) &&
-          (crmCustomer.addressLine1 || crmCustomer.city || crmCustomer.state || crmCustomer.pincode)) {
+        (crmCustomer.addressLine1 || crmCustomer.city || crmCustomer.state || crmCustomer.pincode)) {
         const newAddrId = `addr_${Date.now()}`;
         const compiledAddr = {
           id: newAddrId,
@@ -1947,8 +1947,8 @@ function App() {
   // Wishlist toggle handler
   const handleToggleWishlist = (productId) => {
     setWishlist(prev => {
-      const next = prev.includes(productId) 
-        ? prev.filter(id => id !== productId) 
+      const next = prev.includes(productId)
+        ? prev.filter(id => id !== productId)
         : [...prev, productId];
       if (prev.includes(productId)) {
         try {
@@ -1998,10 +1998,10 @@ function App() {
                 walletBalance: newBalance,
                 transactions: updatedTxs
               });
-              setCrmCustomer(prev => ({ 
-                ...prev, 
-                walletBalance: newBalance, 
-                transactions: updatedTxs 
+              setCrmCustomer(prev => ({
+                ...prev,
+                walletBalance: newBalance,
+                transactions: updatedTxs
               }));
             } catch (err) {
               console.error("Failed to sync wallet top-up to CRM:", err);
@@ -2042,10 +2042,10 @@ function App() {
                 walletBalance: newBalance,
                 transactions: updatedTxs
               });
-              setCrmCustomer(prev => ({ 
-                ...prev, 
-                walletBalance: newBalance, 
-                transactions: updatedTxs 
+              setCrmCustomer(prev => ({
+                ...prev,
+                walletBalance: newBalance,
+                transactions: updatedTxs
               }));
             }
             resolve();
@@ -2100,13 +2100,13 @@ function App() {
           walletBalance: newWallet,
           transactions: updatedTxs
         });
-        setCrmCustomer(prev => ({ 
-          ...prev, 
-          loyaltyPoints: newPoints, 
+        setCrmCustomer(prev => ({
+          ...prev,
+          loyaltyPoints: newPoints,
           walletBalance: newWallet,
           transactions: updatedTxs
         }));
-        
+
         // Write audit log transaction record
         await addDoc(collection(null, 'loyalty_transactions'), {
           customerId: crmCustomer.id,
@@ -2126,14 +2126,14 @@ function App() {
   // Saved Addresses Handlers
   const handleAddAddress = async (newAddr) => {
     const newId = `addr_${Date.now()}`;
-    const newAddrObj = { 
-      ...newAddr, 
+    const newAddrObj = {
+      ...newAddr,
       id: newId,
-      detail: newAddr.detail || `${newAddr.line1}${newAddr.line2 ? ', ' + newAddr.line2 : ''}, ${newAddr.city}, ${newAddr.state} - ${newAddr.pinCode || newAddr.pincode}` 
+      detail: newAddr.detail || `${newAddr.line1}${newAddr.line2 ? ', ' + newAddr.line2 : ''}, ${newAddr.city}, ${newAddr.state} - ${newAddr.pinCode || newAddr.pincode}`
     };
     const updated = [...savedAddresses, newAddrObj];
     setSavedAddresses(updated);
-    
+
     // Set default or first address as current deliveryAddress
     if (newAddr.isDefault || savedAddresses.length === 0) {
       setDeliveryAddress(newAddrObj.detail);
@@ -2154,7 +2154,7 @@ function App() {
   const handleDeleteAddress = async (addrId) => {
     const updated = savedAddresses.filter(a => a.id !== addrId);
     setSavedAddresses(updated);
-    
+
     if (crmCustomer) {
       try {
         const custRef = doc(null, 'customers', crmCustomer.id);
@@ -2246,6 +2246,156 @@ function App() {
     }
   };
 
+  const handleOnboardingComplete = async (data) => {
+    try {
+      console.log("Onboarding complete called with data:", JSON.stringify(data));
+      setMembershipTier(data.membershipTier || 'Free');
+      if (data.phone) {
+        const phoneClean = data.phone.trim();
+        console.log("Onboarding phone clean:", phoneClean);
+        setCustomerPhone(phoneClean);
+        localStorage.setItem('rg_user_phone', phoneClean);
+
+        // Save/merge onboarding details to Firestore in the 'customers' collection
+        console.log("Saving preferences to database...");
+        try {
+          const q = query(collection(null, 'customers'), where('phone', '==', phoneClean));
+          console.log("Query created. Fetching docs...");
+          const snap = await getDocs(q);
+          console.log("docs fetched successfully.");
+          let customerDocId = null;
+          let existingData = {};
+          snap.forEach(d => {
+            customerDocId = d.id;
+            existingData = d.data();
+          });
+          console.log("Found existing customerDocId:", customerDocId);
+
+          let matchedReferrer = null;
+          if (data.referredByCode) {
+            console.log("Verifying referral code:", data.referredByCode);
+            try {
+              const refQ = query(collection(null, 'customers'), where('referralCode', '==', data.referredByCode.trim()));
+              const refSnap = await getDocs(refQ);
+              refSnap.forEach(d => {
+                matchedReferrer = { ...d.data(), id: d.id };
+              });
+              console.log("Matched referrer:", JSON.stringify(matchedReferrer));
+            } catch (err) {
+              console.error("Error checking referral code validity:", err);
+            }
+          }
+
+          if (matchedReferrer) {
+            try {
+              const referrerRef = doc(null, 'customers', matchedReferrer.id);
+              const referrerNewWallet = (parseFloat(matchedReferrer.walletBalance) || 0) + 100.00;
+              const referrerNewTx = {
+                id: `tx_referrer_${Date.now()}`,
+                amount: 100.00,
+                type: 'Deposit',
+                description: `Referral reward for inviting ${data.name || 'Friend'}`,
+                date: new Date().toISOString().split('T')[0]
+              };
+              const referrerUpdatedTxs = [referrerNewTx, ...(matchedReferrer.transactions || [])];
+              await updateDoc(referrerRef, {
+                walletBalance: referrerNewWallet,
+                transactions: referrerUpdatedTxs
+              });
+              console.log("Referrer wallet successfully credited!");
+            } catch (err) {
+              console.error("Failed to credit referrer wallet:", err);
+            }
+          }
+
+          const welcomeAmount = 250.00;
+          const referralAmount = matchedReferrer ? 100.00 : 0.00;
+          const initialWallet = welcomeAmount + referralAmount;
+
+          const generatedReferralCode = `${(data.name || 'RG').replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase()}${phoneClean.slice(-4)}`;
+
+          const defaultTransactions = [
+            {
+              id: 'tx_welcome',
+              amount: welcomeAmount,
+              type: 'Deposit',
+              description: 'Welcome Sign Up Bonus Balance',
+              date: new Date().toISOString().split('T')[0]
+            }
+          ];
+          if (matchedReferrer) {
+            defaultTransactions.push({
+              id: `tx_referred_${Date.now()}`,
+              amount: referralAmount,
+              type: 'Deposit',
+              description: `Referral signup bonus (Referred by ${matchedReferrer.name || 'Friend'})`,
+              date: new Date().toISOString().split('T')[0]
+            });
+          }
+
+          const updatedData = {
+            name: data.name || existingData.name || 'Mike',
+            phone: phoneClean,
+            email: data.email || existingData.email || auth.currentUser?.email || '',
+            gender: data.gender || existingData.gender || 'Women',
+            ageRange: data.ageRange || existingData.ageRange || '25–34',
+            profession: data.profession || existingData.profession || 'Casual',
+            stylePersona: data.stylePersona || existingData.stylePersona || 'Minimalist',
+            interests: (data.interests && data.interests.length > 0) ? data.interests : (data.stylePersona ? data.stylePersona.split(',').map(s => s.trim()) : (existingData.interests || [])),
+            tier: existingData.tier || 'Free',
+            joinedDate: existingData.joinedDate || new Date().toISOString().split('T')[0],
+            walletBalance: existingData.walletBalance !== undefined ? parseFloat(existingData.walletBalance) : initialWallet,
+            loyaltyPoints: existingData.loyaltyPoints !== undefined ? parseInt(existingData.loyaltyPoints, 10) : 120,
+            referralCode: existingData.referralCode || generatedReferralCode,
+            referredBy: existingData.referredBy || (matchedReferrer ? matchedReferrer.referralCode : ''),
+            transactions: existingData.transactions || defaultTransactions
+          };
+
+          if (customerDocId) {
+            console.log("Updating customer doc reference...");
+            await setDoc(doc(null, 'customers', customerDocId), updatedData, { merge: true });
+          } else {
+            console.log("Adding new customer doc reference...");
+            const newDocRef = await addDoc(collection(null, 'customers'), updatedData);
+            console.log("New customer doc added with ID:", newDocRef.id);
+            await setDoc(doc(null, 'customers', newDocRef.id), { id: newDocRef.id }, { merge: true });
+          }
+          console.log("Customer preferences saved successfully.");
+        } catch (err) {
+          console.error("Failed to save onboarding preferences to cloud:", err);
+        }
+
+        console.log("Checking loyalty points for phone:", phoneClean);
+        handleCheckLoyalty(phoneClean);
+      }
+      
+      console.log("Processing welcome coupons and notifications...");
+      if (data.hasStyleDiscount) {
+        setActiveCoupon({
+          id: 'style10',
+          code: 'STYLE10',
+          type: 'Percent',
+          value: 10,
+          minOrder: 0,
+          maxDiscount: 1000,
+          status: 'Active'
+        });
+        setWelcomeToast('Welcome Curation Coupon STYLE10 (10% OFF) Applied!');
+        setTimeout(() => setWelcomeToast(''), 4500);
+      } else {
+        setWelcomeToast('Preferences saved successfully! Curation active.');
+        setTimeout(() => setWelcomeToast(''), 3000);
+      }
+      console.log("Saving onboarding status locally...");
+      localStorage.setItem('rg_onboarded', 'true');
+      setIsOnboarded(true);
+      console.log("Onboarding flow successfully completed!");
+    } catch (err) {
+      console.error("CRITICAL ERROR IN ONBOARDING COMPLETE CALLBACK:", err);
+      alert("Onboarding Error: " + (err.message || String(err)));
+    }
+  };
+
   const handleClearCache = async () => {
     console.log("Clearing cached local storage settings and API keys...");
     localStorage.removeItem('rg_payment_gateway_key');
@@ -2256,10 +2406,10 @@ function App() {
     localStorage.removeItem('rg_vertex_project_id');
     localStorage.removeItem('rg_vertex_region');
     localStorage.removeItem('rg_vertex_service_account');
-    
+
     // Reset local state to reflect change immediately
     setPaymentGatewayKey('');
-    
+
     // Re-fetch fresh configurations from Firestore
     try {
       const keysRef = doc(null, 'settings', 'api_keys');
@@ -2328,10 +2478,10 @@ function App() {
 
     if (profileSubView === 'orders') {
       return (
-        <MyOrders 
-          placedOrders={placedOrders} 
+        <MyOrders
+          placedOrders={placedOrders}
           products={products}
-          onClose={() => setProfileSubView('dashboard')} 
+          onClose={() => setProfileSubView('dashboard')}
           onDownloadInvoice={handleDownloadInvoicePDF}
           onShareInvoice={handleShareInvoicePDF}
         />
@@ -2340,84 +2490,84 @@ function App() {
 
     if (profileSubView === 'addresses') {
       return (
-        <MyAddresses 
-          savedAddresses={savedAddresses} 
+        <MyAddresses
+          savedAddresses={savedAddresses}
           onAddAddress={handleAddAddress}
           onDeleteAddress={handleDeleteAddress}
-          onClose={() => setProfileSubView('dashboard')} 
+          onClose={() => setProfileSubView('dashboard')}
         />
       );
     }
 
     if (profileSubView === 'wallet') {
       return (
-        <MyWallet 
-          balance={walletBalance} 
+        <MyWallet
+          balance={walletBalance}
           transactions={walletTransactions}
           onAddMoney={handleAddMoney}
-          onClose={() => setProfileSubView('dashboard')} 
+          onClose={() => setProfileSubView('dashboard')}
         />
       );
     }
 
     if (profileSubView === 'coupons') {
       return (
-        <MyCoupons 
-          availableCoupons={availableCoupons} 
+        <MyCoupons
+          availableCoupons={availableCoupons}
           activeCoupon={activeCoupon}
           onApplyCoupon={setActiveCoupon}
-          onClose={() => setProfileSubView('dashboard')} 
+          onClose={() => setProfileSubView('dashboard')}
         />
       );
     }
 
     if (profileSubView === 'loyalty') {
       return (
-        <LoyaltyPoints 
-          points={loyaltyPoints} 
+        <LoyaltyPoints
+          points={loyaltyPoints}
           history={formattedLoyaltyTransactions}
           onRedeemReward={handleRedeemReward}
-          onClose={() => setProfileSubView('dashboard')} 
+          onClose={() => setProfileSubView('dashboard')}
         />
       );
     }
 
     if (profileSubView === 'refer') {
       return (
-        <ReferEarn 
-          referralCode={crmCustomer?.referralCode || 'RG7425MX'} 
+        <ReferEarn
+          referralCode={crmCustomer?.referralCode || 'RG7425MX'}
           referralsCount={referralsCount}
-          onClose={() => setProfileSubView('dashboard')} 
+          onClose={() => setProfileSubView('dashboard')}
         />
       );
     }
 
     if (profileSubView === 'edit') {
       return (
-        <EditProfile 
-          customer={{ 
-            name: customerName, 
-            phone: customerPhone, 
-            email: crmCustomer?.email || 'manisharawat7425@gmail.com', 
-            gender: crmCustomer?.gender || 'Female', 
+        <EditProfile
+          customer={{
+            name: customerName,
+            phone: customerPhone,
+            email: crmCustomer?.email || 'manisharawat7425@gmail.com',
+            gender: crmCustomer?.gender || 'Female',
             ageGroup: crmCustomer?.ageGroup || '18-24',
             photoURL: crmCustomer?.photoURL || ''
-          }} 
+          }}
           onSaveProfile={handleSaveProfile}
-          onClose={() => setProfileSubView('dashboard')} 
+          onClose={() => setProfileSubView('dashboard')}
         />
       );
     }
 
     if (profileSubView === 'settings') {
       return (
-        <Settings 
+        <Settings
           customer={crmCustomer}
           onUpdateCustomerSettings={handleUpdateCustomerSettings}
           onSignOut={handleSignOut}
           onDeleteAccount={handleDeleteAccount}
           onClearCache={handleClearCache}
-          onClose={() => setProfileSubView('dashboard')} 
+          onClose={() => setProfileSubView('dashboard')}
           legalPolicies={legalPolicies}
         />
       );
@@ -2484,9 +2634,9 @@ function App() {
 
         {/* Action Link Lists */}
         <div style={{ padding: '20px 16px 40px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          
+
           {/* Member perks */}
-          <div 
+          <div
             onClick={() => setActiveTab('paywall')}
             style={{
               background: 'linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%)',
@@ -2511,7 +2661,7 @@ function App() {
 
           <div style={{ background: 'var(--phone-card-bg)', borderRadius: '20px', border: '1.5px solid var(--phone-card-border)', overflow: 'hidden' }}>
             {/* Edit Profile */}
-            <div 
+            <div
               onClick={() => setProfileSubView('edit')}
               style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1.5px solid var(--phone-card-border)', cursor: 'pointer' }}
             >
@@ -2525,7 +2675,7 @@ function App() {
             </div>
 
             {/* My Orders */}
-            <div 
+            <div
               onClick={() => setProfileSubView('orders')}
               style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1.5px solid var(--phone-card-border)', cursor: 'pointer' }}
             >
@@ -2539,7 +2689,7 @@ function App() {
             </div>
 
             {/* My Wallet */}
-            <div 
+            <div
               onClick={() => setProfileSubView('wallet')}
               style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1.5px solid var(--phone-card-border)', cursor: 'pointer' }}
             >
@@ -2556,7 +2706,7 @@ function App() {
             </div>
 
             {/* Saved Addresses */}
-            <div 
+            <div
               onClick={() => setProfileSubView('addresses')}
               style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1.5px solid var(--phone-card-border)', cursor: 'pointer' }}
             >
@@ -2570,7 +2720,7 @@ function App() {
             </div>
 
             {/* Coupons & Offers */}
-            <div 
+            <div
               onClick={() => setProfileSubView('coupons')}
               style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1.5px solid var(--phone-card-border)', cursor: 'pointer' }}
             >
@@ -2584,7 +2734,7 @@ function App() {
             </div>
 
             {/* Loyalty points */}
-            <div 
+            <div
               onClick={() => setProfileSubView('loyalty')}
               style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1.5px solid var(--phone-card-border)', cursor: 'pointer' }}
             >
@@ -2601,7 +2751,7 @@ function App() {
             </div>
 
             {/* Refer & Earn */}
-            <div 
+            <div
               onClick={() => setProfileSubView('refer')}
               style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1.5px solid var(--phone-card-border)', cursor: 'pointer' }}
             >
@@ -2615,7 +2765,7 @@ function App() {
             </div>
 
             {/* Settings */}
-            <div 
+            <div
               onClick={() => setProfileSubView('settings')}
               style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'space-between', padding: '14px 16px', cursor: 'pointer' }}
             >
@@ -2645,7 +2795,7 @@ function App() {
           setSelectedProduct(null);
           return;
         }
-        
+
         if (activeTab === 'saved') {
           if (cartCheckoutStep === 'select-address') {
             setCartCheckoutStep('bag');
@@ -2666,7 +2816,7 @@ function App() {
 
     return () => {
       if (handlerPromise) {
-        handlerPromise.then(h => h.remove()).catch(() => {});
+        handlerPromise.then(h => h.remove()).catch(() => { });
       }
     };
   }, [isOnboarded, selectedProduct, activeTab, cartCheckoutStep]);
@@ -2738,7 +2888,7 @@ function App() {
         const quantity = product.qty !== undefined ? product.qty : 1;
         const existingIdx = tempCart.findIndex(item => item.id === product.id);
         const maxStock = product.stockOnline !== undefined ? parseInt(product.stockOnline, 10) : 99;
-        
+
         if (existingIdx > -1) {
           const existing = tempCart[existingIdx];
           const newQty = Math.min(existing.qty + quantity, maxStock);
@@ -2857,7 +3007,7 @@ function App() {
           tier: membershipTier,
           transactions: updatedTxs
         });
-        
+
         setCrmCustomer(prev => ({
           ...prev,
           loyaltyPoints: newPointsBalance,
@@ -2938,7 +3088,7 @@ function App() {
             const data = prodSnap.data();
             const currentStock = parseInt(data.stockOnline || 0, 10);
             const newStock = Math.max(0, currentStock - item.qty);
-            
+
             const updates = {
               stockOnline: newStock,
               lastUpdated: new Date().toISOString()
@@ -3003,7 +3153,7 @@ function App() {
       }
 
       await addDoc(collection(null, 'orders'), orderPayload);
-      
+
       // Log transactions to loyalty_transactions
       if (pointsRedeemed > 0) {
         try {
@@ -3035,7 +3185,7 @@ function App() {
           console.error("Failed to log points earn transaction:", txErr);
         }
       }
-      
+
       setUseLoyaltyPoints(false);
       setUseWalletBalance(false);
       setOrderSuccessId(orderPayload.orderId);
@@ -3091,12 +3241,12 @@ function App() {
           data: pdfBase64,
           directory: Directory.Cache
         });
-        
+
         await Share.share({
           files: [result.uri],
           dialogTitle: 'Export / Save Invoice PDF'
         });
-        
+
         setWelcomeToast("Invoice ready for saving!");
         setTimeout(() => setWelcomeToast(''), 3000);
       } else {
@@ -3173,7 +3323,7 @@ function App() {
         const pdfBlob = new Blob([byteArray], { type: 'application/pdf' });
         const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
         const blobUrl = URL.createObjectURL(pdfBlob);
-        
+
         let shared = false;
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           try {
@@ -3228,7 +3378,7 @@ function App() {
   const handlePlaceOrder = async (e) => {
     if (e) e.preventDefault();
     if (cart.length === 0) return;
-    
+
     setIsSubmitting(true);
     try {
       const subtotal = getSubtotal();
@@ -3261,15 +3411,15 @@ function App() {
         else if (membershipTier === 'VIP') tierMultiplier = 2.0;
         else if (membershipTier === 'Plus') tierMultiplier = 1.2;
       }
-      
+
       const finalPointsEarned = Math.floor((finalPaidAmount / 100) * pointsPer100 * tierMultiplier);
       const pointsRedeemed = useLoyaltyPoints && crmCustomer ? parseInt(crmCustomer.loyaltyPoints || 0, 10) : 0;
-      
-      const newPointsBalance = crmCustomer 
-        ? Math.max(0, parseInt(crmCustomer.loyaltyPoints || 0, 10) - pointsRedeemed + finalPointsEarned) 
+
+      const newPointsBalance = crmCustomer
+        ? Math.max(0, parseInt(crmCustomer.loyaltyPoints || 0, 10) - pointsRedeemed + finalPointsEarned)
         : Math.max(0, loyaltyPoints - pointsRedeemed + finalPointsEarned);
-      const newWalletBalance = crmCustomer 
-        ? Math.max(0, walletBalanceVal - walletSpent) 
+      const newWalletBalance = crmCustomer
+        ? Math.max(0, walletBalanceVal - walletSpent)
         : Math.max(0, walletBalanceVal - walletSpent);
 
       let finalCustomerId = crmCustomer ? crmCustomer.id : `cust_${Date.now()}`;
@@ -3363,134 +3513,6 @@ function App() {
     }
   };
 
-  const handleOnboardingComplete = async (data) => {
-    setMembershipTier(data.membershipTier || 'Free');
-    if (data.phone) {
-      const phoneClean = data.phone.trim();
-      setCustomerPhone(phoneClean);
-      localStorage.setItem('rg_user_phone', phoneClean);
-
-      // Save/merge onboarding details to Firestore in the 'customers' collection
-      try {
-        const q = query(collection(null, 'customers'), where('phone', '==', phoneClean));
-        const snap = await getDocs(q);
-        let customerDocId = null;
-        let existingData = {};
-        snap.forEach(d => {
-          customerDocId = d.id;
-          existingData = d.data();
-        });
-
-        let matchedReferrer = null;
-        if (data.referredByCode) {
-          try {
-            const refQ = query(collection(null, 'customers'), where('referralCode', '==', data.referredByCode.trim()));
-            const refSnap = await getDocs(refQ);
-            refSnap.forEach(d => {
-              matchedReferrer = { ...d.data(), id: d.id };
-            });
-          } catch (err) {
-            console.error("Error checking referral code validity:", err);
-          }
-        }
-
-        if (matchedReferrer) {
-          try {
-            const referrerRef = doc(null, 'customers', matchedReferrer.id);
-            const referrerNewWallet = (parseFloat(matchedReferrer.walletBalance) || 0) + 100.00;
-            const referrerNewTx = {
-              id: `tx_referrer_${Date.now()}`,
-              amount: 100.00,
-              type: 'Deposit',
-              description: `Referral reward for inviting ${data.name || 'Friend'}`,
-              date: new Date().toISOString().split('T')[0]
-            };
-            const referrerUpdatedTxs = [referrerNewTx, ...(matchedReferrer.transactions || [])];
-            await updateDoc(referrerRef, {
-              walletBalance: referrerNewWallet,
-              transactions: referrerUpdatedTxs
-            });
-            console.log("Referrer wallet successfully credited!");
-          } catch (err) {
-            console.error("Failed to credit referrer wallet:", err);
-          }
-        }
-
-        const welcomeAmount = 250.00;
-        const referralAmount = matchedReferrer ? 100.00 : 0.00;
-        const initialWallet = welcomeAmount + referralAmount;
-
-        const generatedReferralCode = `${(data.name || 'RG').replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase()}${phoneClean.slice(-4)}`;
-
-        const defaultTransactions = [
-          {
-            id: 'tx_welcome',
-            amount: welcomeAmount,
-            type: 'Deposit',
-            description: 'Welcome Sign Up Bonus Balance',
-            date: new Date().toISOString().split('T')[0]
-          }
-        ];
-        if (matchedReferrer) {
-          defaultTransactions.push({
-            id: `tx_referred_${Date.now()}`,
-            amount: referralAmount,
-            type: 'Deposit',
-            description: `Referral signup bonus (Referred by ${matchedReferrer.name || 'Friend'})`,
-            date: new Date().toISOString().split('T')[0]
-          });
-        }
-
-        const updatedData = {
-          name: data.name || existingData.name || 'Mike',
-          phone: phoneClean,
-          email: data.email || existingData.email || auth.currentUser?.email || '',
-          gender: data.gender || existingData.gender || 'Women',
-          ageRange: data.ageRange || existingData.ageRange || '25–34',
-          profession: data.profession || existingData.profession || 'Casual',
-          stylePersona: data.stylePersona || existingData.stylePersona || 'Minimalist',
-          interests: (data.interests && data.interests.length > 0) ? data.interests : (data.stylePersona ? data.stylePersona.split(',').map(s => s.trim()) : (existingData.interests || [])),
-          tier: existingData.tier || 'Free',
-          joinedDate: existingData.joinedDate || new Date().toISOString().split('T')[0],
-          walletBalance: existingData.walletBalance !== undefined ? parseFloat(existingData.walletBalance) : initialWallet,
-          loyaltyPoints: existingData.loyaltyPoints !== undefined ? parseInt(existingData.loyaltyPoints, 10) : 120,
-          referralCode: existingData.referralCode || generatedReferralCode,
-          referredBy: existingData.referredBy || (matchedReferrer ? matchedReferrer.referralCode : ''),
-          transactions: existingData.transactions || defaultTransactions
-        };
-
-        if (customerDocId) {
-          await setDoc(doc(null, 'customers', customerDocId), updatedData, { merge: true });
-        } else {
-          const newDocRef = await addDoc(collection(null, 'customers'), updatedData);
-          await setDoc(doc(null, 'customers', newDocRef.id), { id: newDocRef.id }, { merge: true });
-        }
-      } catch (err) {
-        console.error("Failed to save onboarding preferences to cloud:", err);
-      }
-
-      handleCheckLoyalty(phoneClean);
-    }
-    if (data.hasStyleDiscount) {
-      setActiveCoupon({
-        id: 'style10',
-        code: 'STYLE10',
-        type: 'Percent',
-        value: 10,
-        minOrder: 0,
-        maxDiscount: 1000,
-        status: 'Active'
-      });
-      setWelcomeToast('Welcome Curation Coupon STYLE10 (10% OFF) Applied!');
-      setTimeout(() => setWelcomeToast(''), 4500);
-    } else {
-      setWelcomeToast('Preferences saved successfully! Curation active.');
-      setTimeout(() => setWelcomeToast(''), 3000);
-    }
-    localStorage.setItem('rg_onboarded', 'true');
-    setIsOnboarded(true);
-  };
-
   const getStoreMonogram = () => {
     const words = storeSettings.storeName.trim().split(/\s+/);
     if (words.length >= 2) {
@@ -3501,7 +3523,7 @@ function App() {
 
   if (isMobileMode) {
     return (
-      <div 
+      <div
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -3530,13 +3552,13 @@ function App() {
               transition: isRefreshing ? 'all 0.2s ease' : 'none',
               opacity: isRefreshing ? 1 : Math.min(1, pullDistance / 50)
             }}>
-              <RefreshCw 
-                size={18} 
+              <RefreshCw
+                size={18}
                 style={{
                   color: '#ff6b35',
                   transform: isRefreshing ? 'none' : `rotate(${pullDistance * 6}deg)`,
                   animation: isRefreshing ? 'spin 1s linear infinite' : 'none'
-                }} 
+                }}
               />
             </div>
           )}
@@ -3567,7 +3589,7 @@ function App() {
                   <span>{welcomeToast}</span>
                 </div>
               )}
-              
+
               {/* Notch & status bar */}
               <div style={{ height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--phone-header-bg)' }}>
                 <div style={{ width: '60px', height: '6px', background: 'var(--phone-card-border)', borderRadius: '3px', margin: '4px auto 0' }}></div>
@@ -3583,7 +3605,7 @@ function App() {
               {/* Sub Tab Coordination */}
               <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--phone-bg)' }}>
                 {activeTab === 'home' && (
-                  <HomeFeed 
+                  <HomeFeed
                     products={products}
                     stories={stories}
                     heroSlides={heroSlides}
@@ -3624,7 +3646,7 @@ function App() {
                 )}
 
                 {activeTab === 'explore' && (
-                  <HomeFeed 
+                  <HomeFeed
                     products={products}
                     stories={stories}
                     heroSlides={heroSlides}
@@ -3665,7 +3687,7 @@ function App() {
                 )}
 
                 {activeTab === 'tryon' && (
-                  <TryOnStudio 
+                  <TryOnStudio
                     products={products}
                     wishlist={wishlist}
                     onToggleWishlist={handleToggleWishlist}
@@ -3679,7 +3701,7 @@ function App() {
                 )}
 
                 {activeTab === 'paywall' && (
-                  <MembershipPaywall 
+                  <MembershipPaywall
                     activeTier={membershipTier}
                     onUpgradeTier={(tier, cycle) => handleUpgradeSubscription(tier, cycle)}
                     onClose={() => setActiveTab('you')}
@@ -3688,7 +3710,7 @@ function App() {
                 )}
 
                 {activeTab === 'wishlist' && (
-                  <MyWishlist 
+                  <MyWishlist
                     products={products}
                     wishlist={wishlist}
                     onToggleWishlist={handleToggleWishlist}
@@ -3701,7 +3723,7 @@ function App() {
                 {activeTab === 'you' && renderProfileTab()}
 
                 {activeTab === 'saved' && (
-                  <CartCheckout 
+                  <CartCheckout
                     cart={cart}
                     adjustQty={adjustQty}
                     removeFromCart={removeFromCart}
@@ -3745,15 +3767,15 @@ function App() {
 
               {/* Bottom Navigation Menu bar within phone (Orange active accents) */}
               <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', padding: '10px 6px', borderTop: '1.5px solid var(--phone-nav-border)', background: 'var(--phone-header-bg)' }}>
-                <button 
+                <button
                   onClick={() => setActiveTab('home')}
                   style={{ background: 'none', border: 'none', color: activeTab === 'home' ? '#ff6b35' : 'var(--phone-text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', fontSize: '9px', fontWeight: 700, cursor: 'pointer', outline: 'none' }}
                 >
                   <Home size={18} />
                   <span>Home</span>
                 </button>
-                
-                <button 
+
+                <button
                   onClick={() => setActiveTab('explore')}
                   style={{ background: 'none', border: 'none', color: activeTab === 'explore' ? '#ff6b35' : 'var(--phone-text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', fontSize: '9px', fontWeight: 700, cursor: 'pointer', outline: 'none' }}
                 >
@@ -3763,19 +3785,19 @@ function App() {
 
                 {/* Large Floating Center Scan Button */}
                 <div style={{ position: 'relative', marginTop: '-20px', zIndex: 10 }}>
-                  <button 
+                  <button
                     onClick={() => setActiveTab('tryon')}
-                    style={{ 
-                      width: '42px', 
-                      height: '42px', 
-                      borderRadius: '50%', 
-                      background: activeTab === 'tryon' ? '#ea580c' : '#ff6b35', 
-                      border: '4px solid var(--phone-card-bg)', 
-                      color: '#ffffff', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      cursor: 'pointer', 
+                    style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '50%',
+                      background: activeTab === 'tryon' ? '#ea580c' : '#ff6b35',
+                      border: '4px solid var(--phone-card-bg)',
+                      color: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
                       boxShadow: '0 4px 10px rgba(255, 107, 53, 0.35)',
                       outline: 'none'
                     }}
@@ -3785,15 +3807,15 @@ function App() {
                   </button>
                 </div>
 
-                <button 
+                <button
                   onClick={() => setActiveTab('wishlist')}
                   style={{ background: 'none', border: 'none', color: activeTab === 'wishlist' ? '#ff6b35' : 'var(--phone-text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', fontSize: '9px', fontWeight: 700, cursor: 'pointer', outline: 'none' }}
                 >
                   <Heart size={18} />
                   <span>Wishlist</span>
                 </button>
-                
-                <button 
+
+                <button
                   onClick={() => setActiveTab('you')}
                   style={{ background: 'none', border: 'none', color: activeTab === 'you' ? '#ff6b35' : 'var(--phone-text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', fontSize: '9px', fontWeight: 700, cursor: 'pointer', outline: 'none' }}
                 >
@@ -3804,7 +3826,7 @@ function App() {
 
               {/* Product Detail Modal popups */}
               {selectedProduct && (
-                <ProductDetailModal 
+                <ProductDetailModal
                   product={selectedProduct}
                   autoOpenTryOn={autoOpenTryOn}
                   wishlist={wishlist}
@@ -3873,14 +3895,14 @@ function App() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      
+
       {/* Universal header bar */}
       <header className="app-header">
         <div className="brand-section">
           {storeSettings.logoURL ? (
-            <img 
-              src={storeSettings.logoURL} 
-              alt="Logo" 
+            <img
+              src={storeSettings.logoURL}
+              alt="Logo"
               style={{ width: 42, height: 42, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--primary-color)' }}
             />
           ) : (
@@ -3895,7 +3917,7 @@ function App() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <button 
+          <button
             className="payment-mode-btn"
             onClick={() => setShowAdminConsole(!showAdminConsole)}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '6px 12px' }}
@@ -3903,7 +3925,7 @@ function App() {
             <Sliders size={13} />
             {showAdminConsole ? 'Hide Admin Console' : 'Show Admin Console'}
           </button>
-          
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
             <ShieldCheck size={18} style={{ color: 'var(--accent-green)' }} />
             <span>Direct-Sync Enabled</span>
@@ -3913,13 +3935,13 @@ function App() {
 
       {/* Main Workspace Frame */}
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem 1.5rem', gap: '3rem', flexWrap: 'wrap', background: 'radial-gradient(circle at center, #111827, #030712)' }}>
-        
+
         {/* Left Side: Phone Frame Mock */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
           <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--primary-color)', fontFamily: 'var(--font-heading)' }}>
             📱 Customer Mobile View
           </span>
-          
+
           {!isOnboarded ? (
             <div className="glass-panel" style={{ width: '310px', height: '580px', borderRadius: '34px', border: '3px solid var(--phone-border)', padding: '9px', background: 'var(--phone-header-bg)', boxShadow: '0 20px 45px rgba(0,0,0,0.15)' }}>
               <div style={{ border: '1.5px solid var(--phone-card-border)', borderRadius: '26px', overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--phone-header-bg)', position: 'relative' }}>
@@ -3928,7 +3950,7 @@ function App() {
             </div>
           ) : (
             <div className="glass-panel" style={{ width: '310px', height: '580px', borderRadius: '34px', border: '3px solid var(--phone-border)', padding: '9px', background: 'var(--phone-header-bg)', boxShadow: '0 20px 45px rgba(0,0,0,0.15)' }}>
-              <div 
+              <div
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
@@ -3956,13 +3978,13 @@ function App() {
                     transition: isRefreshing ? 'all 0.2s ease' : 'none',
                     opacity: isRefreshing ? 1 : Math.min(1, pullDistance / 50)
                   }}>
-                    <RefreshCw 
-                      size={18} 
+                    <RefreshCw
+                      size={18}
                       style={{
                         color: '#ff6b35',
                         transform: isRefreshing ? 'none' : `rotate(${pullDistance * 6}deg)`,
                         animation: isRefreshing ? 'spin 1s linear infinite' : 'none'
-                      }} 
+                      }}
                     />
                   </div>
                 )}
@@ -3989,7 +4011,7 @@ function App() {
                     <span>{welcomeToast}</span>
                   </div>
                 )}
-                
+
                 {/* Notch & status bar */}
                 <div style={{ height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--phone-header-bg)' }}>
                   <div style={{ width: '60px', height: '6px', background: 'var(--phone-card-border)', borderRadius: '3px', margin: '4px auto 0' }}></div>
@@ -4005,7 +4027,7 @@ function App() {
                 {/* Sub Tab Coordination */}
                 <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--phone-bg)' }}>
                   {activeTab === 'home' && (
-                    <HomeFeed 
+                    <HomeFeed
                       products={products}
                       stories={stories}
                       heroSlides={heroSlides}
@@ -4042,7 +4064,7 @@ function App() {
                   )}
 
                   {activeTab === 'explore' && (
-                    <HomeFeed 
+                    <HomeFeed
                       products={products}
                       stories={stories}
                       heroSlides={heroSlides}
@@ -4080,7 +4102,7 @@ function App() {
                   )}
 
                   {activeTab === 'tryon' && (
-                    <TryOnStudio 
+                    <TryOnStudio
                       products={products}
                       wishlist={wishlist}
                       onToggleWishlist={handleToggleWishlist}
@@ -4094,7 +4116,7 @@ function App() {
                   )}
 
                   {activeTab === 'paywall' && (
-                    <MembershipPaywall 
+                    <MembershipPaywall
                       activeTier={membershipTier}
                       onUpgradeTier={(tier, cycle) => handleUpgradeSubscription(tier, cycle)}
                       onClose={() => setActiveTab('you')}
@@ -4103,7 +4125,7 @@ function App() {
                   )}
 
                   {activeTab === 'wishlist' && (
-                    <MyWishlist 
+                    <MyWishlist
                       products={products}
                       wishlist={wishlist}
                       onToggleWishlist={handleToggleWishlist}
@@ -4116,7 +4138,7 @@ function App() {
                   {activeTab === 'you' && renderProfileTab()}
 
                   {activeTab === 'saved' && (
-                    <CartCheckout 
+                    <CartCheckout
                       cart={cart}
                       adjustQty={adjustQty}
                       removeFromCart={removeFromCart}
@@ -4160,15 +4182,15 @@ function App() {
 
                 {/* Bottom Navigation Menu bar within phone (Orange active accents) */}
                 <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', padding: '10px 6px', borderTop: '1.5px solid var(--phone-nav-border)', background: 'var(--phone-header-bg)' }}>
-                  <button 
+                  <button
                     onClick={() => setActiveTab('home')}
                     style={{ background: 'none', border: 'none', color: activeTab === 'home' ? '#ff6b35' : 'var(--phone-text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', fontSize: '9px', fontWeight: 700, cursor: 'pointer', outline: 'none' }}
                   >
                     <Home size={18} />
                     <span>Home</span>
                   </button>
-                  
-                  <button 
+
+                  <button
                     onClick={() => setActiveTab('explore')}
                     style={{ background: 'none', border: 'none', color: activeTab === 'explore' ? '#ff6b35' : 'var(--phone-text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', fontSize: '9px', fontWeight: 700, cursor: 'pointer', outline: 'none' }}
                   >
@@ -4178,19 +4200,19 @@ function App() {
 
                   {/* Large Floating Center Scan Button */}
                   <div style={{ position: 'relative', marginTop: '-20px', zIndex: 10 }}>
-                    <button 
+                    <button
                       onClick={() => setActiveTab('tryon')}
-                      style={{ 
-                        width: '42px', 
-                        height: '42px', 
-                        borderRadius: '50%', 
-                        background: activeTab === 'tryon' ? '#ea580c' : '#ff6b35', 
-                        border: '4px solid var(--phone-card-bg)', 
-                        color: '#ffffff', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        cursor: 'pointer', 
+                      style={{
+                        width: '42px',
+                        height: '42px',
+                        borderRadius: '50%',
+                        background: activeTab === 'tryon' ? '#ea580c' : '#ff6b35',
+                        border: '4px solid var(--phone-card-bg)',
+                        color: '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
                         boxShadow: '0 4px 10px rgba(255, 107, 53, 0.35)',
                         outline: 'none'
                       }}
@@ -4200,15 +4222,15 @@ function App() {
                     </button>
                   </div>
 
-                  <button 
+                  <button
                     onClick={() => setActiveTab('wishlist')}
                     style={{ background: 'none', border: 'none', color: activeTab === 'wishlist' ? '#ff6b35' : 'var(--phone-text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', fontSize: '9px', fontWeight: 700, cursor: 'pointer', outline: 'none' }}
                   >
                     <Heart size={18} />
                     <span>Wishlist</span>
                   </button>
-                  
-                  <button 
+
+                  <button
                     onClick={() => setActiveTab('you')}
                     style={{ background: 'none', border: 'none', color: activeTab === 'you' ? '#ff6b35' : 'var(--phone-text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', fontSize: '9px', fontWeight: 700, cursor: 'pointer', outline: 'none' }}
                   >
@@ -4219,7 +4241,7 @@ function App() {
 
                 {/* Product Detail Modal popups */}
                 {selectedProduct && (
-                  <ProductDetailModal 
+                  <ProductDetailModal
                     product={selectedProduct}
                     autoOpenTryOn={autoOpenTryOn}
                     wishlist={wishlist}
@@ -4254,7 +4276,7 @@ function App() {
               💻 Store Merchant Dashboard
             </span>
             <div className="glass-panel" style={{ width: '480px', height: '580px', overflow: 'hidden', display: 'flex', flexDirection: 'column', borderRadius: '16px', boxShadow: '0 20px 45px rgba(0,0,0,0.6)' }}>
-              
+
               {/* Window chrome title bar */}
               <div style={{ display: 'flex', alignContent: 'center', gap: '6px', padding: '10px 14px', borderBottom: '2px solid var(--line)', background: 'rgba(255,255,255,0.03)' }}>
                 <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--accent-red)' }}></span>
@@ -4264,7 +4286,7 @@ function App() {
                   admin.rgretailer.app/engine
                 </span>
               </div>
-              
+
               <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
                 <AdminConsole products={products} recommendationRules={recommendationRules} stories={stories} />
               </div>
