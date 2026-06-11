@@ -2250,125 +2250,125 @@ function App() {
     try {
       console.log("Onboarding complete called with data:", JSON.stringify(data));
       setMembershipTier(data.membershipTier || 'Free');
+
+      // 1. Immediately transition user to storefront so the UI never hangs on iOS!
+      console.log("Saving onboarding status locally & transitioning UI...");
+      localStorage.setItem('rg_onboarded', 'true');
+      setIsOnboarded(true);
+
       if (data.phone) {
         const phoneClean = data.phone.trim();
         console.log("Onboarding phone clean:", phoneClean);
         setCustomerPhone(phoneClean);
         localStorage.setItem('rg_user_phone', phoneClean);
 
-        // Save/merge onboarding details to Firestore in the 'customers' collection
-        console.log("Saving preferences to database...");
-        try {
-          const q = query(collection(null, 'customers'), where('phone', '==', phoneClean));
-          console.log("Query created. Fetching docs...");
-          const snap = await getDocs(q);
-          console.log("docs fetched successfully.");
-          let customerDocId = null;
-          let existingData = {};
-          snap.forEach(d => {
-            customerDocId = d.id;
-            existingData = d.data();
-          });
-          console.log("Found existing customerDocId:", customerDocId);
-
-          let matchedReferrer = null;
-          if (data.referredByCode) {
-            console.log("Verifying referral code:", data.referredByCode);
-            try {
-              const refQ = query(collection(null, 'customers'), where('referralCode', '==', data.referredByCode.trim()));
-              const refSnap = await getDocs(refQ);
-              refSnap.forEach(d => {
-                matchedReferrer = { ...d.data(), id: d.id };
-              });
-              console.log("Matched referrer:", JSON.stringify(matchedReferrer));
-            } catch (err) {
-              console.error("Error checking referral code validity:", err);
-            }
-          }
-
-          if (matchedReferrer) {
-            try {
-              const referrerRef = doc(null, 'customers', matchedReferrer.id);
-              const referrerNewWallet = (parseFloat(matchedReferrer.walletBalance) || 0) + 100.00;
-              const referrerNewTx = {
-                id: `tx_referrer_${Date.now()}`,
-                amount: 100.00,
-                type: 'Deposit',
-                description: `Referral reward for inviting ${data.name || 'Friend'}`,
-                date: new Date().toISOString().split('T')[0]
-              };
-              const referrerUpdatedTxs = [referrerNewTx, ...(matchedReferrer.transactions || [])];
-              await updateDoc(referrerRef, {
-                walletBalance: referrerNewWallet,
-                transactions: referrerUpdatedTxs
-              });
-              console.log("Referrer wallet successfully credited!");
-            } catch (err) {
-              console.error("Failed to credit referrer wallet:", err);
-            }
-          }
-
-          const welcomeAmount = 250.00;
-          const referralAmount = matchedReferrer ? 100.00 : 0.00;
-          const initialWallet = welcomeAmount + referralAmount;
-
-          const generatedReferralCode = `${(data.name || 'RG').replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase()}${phoneClean.slice(-4)}`;
-
-          const defaultTransactions = [
-            {
-              id: 'tx_welcome',
-              amount: welcomeAmount,
-              type: 'Deposit',
-              description: 'Welcome Sign Up Bonus Balance',
-              date: new Date().toISOString().split('T')[0]
-            }
-          ];
-          if (matchedReferrer) {
-            defaultTransactions.push({
-              id: `tx_referred_${Date.now()}`,
-              amount: referralAmount,
-              type: 'Deposit',
-              description: `Referral signup bonus (Referred by ${matchedReferrer.name || 'Friend'})`,
-              date: new Date().toISOString().split('T')[0]
+        // 2. Perform DB reads and writes in the background so we do not block UI thread
+        (async () => {
+          try {
+            console.log("[Background DB Sync] Saving preferences to database...");
+            const q = query(collection(null, 'customers'), where('phone', '==', phoneClean));
+            const snap = await getDocs(q);
+            let customerDocId = null;
+            let existingData = {};
+            snap.forEach(d => {
+              customerDocId = d.id;
+              existingData = d.data();
             });
+
+            let matchedReferrer = null;
+            if (data.referredByCode) {
+              try {
+                const refQ = query(collection(null, 'customers'), where('referralCode', '==', data.referredByCode.trim()));
+                const refSnap = await getDocs(refQ);
+                refSnap.forEach(d => {
+                  matchedReferrer = { ...d.data(), id: d.id };
+                });
+              } catch (err) {
+                console.error("[Background DB Sync] Error checking referral code validity:", err);
+              }
+            }
+
+            if (matchedReferrer) {
+              try {
+                const referrerRef = doc(null, 'customers', matchedReferrer.id);
+                const referrerNewWallet = (parseFloat(matchedReferrer.walletBalance) || 0) + 100.00;
+                const referrerNewTx = {
+                  id: `tx_referrer_${Date.now()}`,
+                  amount: 100.00,
+                  type: 'Deposit',
+                  description: `Referral reward for inviting ${data.name || 'Friend'}`,
+                  date: new Date().toISOString().split('T')[0]
+                };
+                const referrerUpdatedTxs = [referrerNewTx, ...(matchedReferrer.transactions || [])];
+                await updateDoc(referrerRef, {
+                  walletBalance: referrerNewWallet,
+                  transactions: referrerUpdatedTxs
+                });
+              } catch (err) {
+                console.error("[Background DB Sync] Failed to credit referrer wallet:", err);
+              }
+            }
+
+            const welcomeAmount = 250.00;
+            const referralAmount = matchedReferrer ? 100.00 : 0.00;
+            const initialWallet = welcomeAmount + referralAmount;
+
+            const generatedReferralCode = `${(data.name || 'RG').replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase()}${phoneClean.slice(-4)}`;
+
+            const defaultTransactions = [
+              {
+                id: 'tx_welcome',
+                amount: welcomeAmount,
+                type: 'Deposit',
+                description: 'Welcome Sign Up Bonus Balance',
+                date: new Date().toISOString().split('T')[0]
+              }
+            ];
+            if (matchedReferrer) {
+              defaultTransactions.push({
+                id: `tx_referred_${Date.now()}`,
+                amount: referralAmount,
+                type: 'Deposit',
+                description: `Referral signup bonus (Referred by ${matchedReferrer.name || 'Friend'})`,
+                date: new Date().toISOString().split('T')[0]
+              });
+            }
+
+            const updatedData = {
+              name: data.name || existingData.name || 'Mike',
+              phone: phoneClean,
+              email: data.email || existingData.email || auth.currentUser?.email || '',
+              gender: data.gender || existingData.gender || 'Women',
+              ageRange: data.ageRange || existingData.ageRange || '25–34',
+              profession: data.profession || existingData.profession || 'Casual',
+              stylePersona: data.stylePersona || existingData.stylePersona || 'Minimalist',
+              interests: (data.interests && data.interests.length > 0) ? data.interests : (data.stylePersona ? data.stylePersona.split(',').map(s => s.trim()) : (existingData.interests || [])),
+              tier: existingData.tier || 'Free',
+              joinedDate: existingData.joinedDate || new Date().toISOString().split('T')[0],
+              walletBalance: existingData.walletBalance !== undefined ? parseFloat(existingData.walletBalance) : initialWallet,
+              loyaltyPoints: existingData.loyaltyPoints !== undefined ? parseInt(existingData.loyaltyPoints, 10) : 120,
+              referralCode: existingData.referralCode || generatedReferralCode,
+              referredBy: existingData.referredBy || (matchedReferrer ? matchedReferrer.referralCode : ''),
+              transactions: existingData.transactions || defaultTransactions
+            };
+
+            if (customerDocId) {
+              await setDoc(doc(null, 'customers', customerDocId), updatedData, { merge: true });
+            } else {
+              const newDocRef = await addDoc(collection(null, 'customers'), updatedData);
+              await setDoc(doc(null, 'customers', newDocRef.id), { id: newDocRef.id }, { merge: true });
+            }
+            console.log("[Background DB Sync] Customer preferences saved successfully.");
+          } catch (err) {
+            console.error("[Background DB Sync] Failed to save onboarding preferences to cloud:", err);
           }
 
-          const updatedData = {
-            name: data.name || existingData.name || 'Mike',
-            phone: phoneClean,
-            email: data.email || existingData.email || auth.currentUser?.email || '',
-            gender: data.gender || existingData.gender || 'Women',
-            ageRange: data.ageRange || existingData.ageRange || '25–34',
-            profession: data.profession || existingData.profession || 'Casual',
-            stylePersona: data.stylePersona || existingData.stylePersona || 'Minimalist',
-            interests: (data.interests && data.interests.length > 0) ? data.interests : (data.stylePersona ? data.stylePersona.split(',').map(s => s.trim()) : (existingData.interests || [])),
-            tier: existingData.tier || 'Free',
-            joinedDate: existingData.joinedDate || new Date().toISOString().split('T')[0],
-            walletBalance: existingData.walletBalance !== undefined ? parseFloat(existingData.walletBalance) : initialWallet,
-            loyaltyPoints: existingData.loyaltyPoints !== undefined ? parseInt(existingData.loyaltyPoints, 10) : 120,
-            referralCode: existingData.referralCode || generatedReferralCode,
-            referredBy: existingData.referredBy || (matchedReferrer ? matchedReferrer.referralCode : ''),
-            transactions: existingData.transactions || defaultTransactions
-          };
-
-          if (customerDocId) {
-            console.log("Updating customer doc reference...");
-            await setDoc(doc(null, 'customers', customerDocId), updatedData, { merge: true });
-          } else {
-            console.log("Adding new customer doc reference...");
-            const newDocRef = await addDoc(collection(null, 'customers'), updatedData);
-            console.log("New customer doc added with ID:", newDocRef.id);
-            await setDoc(doc(null, 'customers', newDocRef.id), { id: newDocRef.id }, { merge: true });
-          }
-          console.log("Customer preferences saved successfully.");
-        } catch (err) {
-          console.error("Failed to save onboarding preferences to cloud:", err);
-        }
-
-        console.log("Checking loyalty points for phone:", phoneClean);
-        handleCheckLoyalty(phoneClean);
+          // Trigger loyalty verify in the background
+          console.log("[Background DB Sync] Checking loyalty points for phone:", phoneClean);
+          handleCheckLoyalty(phoneClean);
+        })();
       }
-      
+
       console.log("Processing welcome coupons and notifications...");
       if (data.hasStyleDiscount) {
         setActiveCoupon({
@@ -2386,9 +2386,6 @@ function App() {
         setWelcomeToast('Preferences saved successfully! Curation active.');
         setTimeout(() => setWelcomeToast(''), 3000);
       }
-      console.log("Saving onboarding status locally...");
-      localStorage.setItem('rg_onboarded', 'true');
-      setIsOnboarded(true);
       console.log("Onboarding flow successfully completed!");
     } catch (err) {
       console.error("CRITICAL ERROR IN ONBOARDING COMPLETE CALLBACK:", err);
