@@ -1,6 +1,8 @@
 import { initializeApp } from "firebase/app";
 import {
   getAuth,
+  initializeAuth,
+  indexedDBLocalPersistence,
   GoogleAuthProvider,
   signInWithPhoneNumber,
   RecaptchaVerifier,
@@ -11,8 +13,7 @@ import {
 } from "firebase/auth";
 import {
   getFirestore,
-  initializeFirestore,
-  memoryLocalCache,
+  getDoc as realGetDoc,
   collection as realCollection,
   doc as realDoc,
   setDoc as realSetDoc,
@@ -26,6 +27,7 @@ import {
   limit as realLimit,
   where as realWhere
 } from "firebase/firestore";
+import { Capacitor } from "@capacitor/core";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCWkcxwUjssU14v88bmSMB3gwFOSsuorQ0",
@@ -43,26 +45,10 @@ let isFallbackMode = false;
 
 try {
   app = initializeApp(firebaseConfig);
-  
-  // Detect if running inside iOS/iPadOS (native Capacitor app or Safari browser)
-  const isIOS = typeof window !== 'undefined' && 
-    (/iPad|iPhone|iPod/i.test(navigator.userAgent) || 
-     (navigator.userAgent.includes('Macintosh') && navigator.maxTouchPoints > 1));
-
-  if (isIOS) {
-    console.log("Firebase Init: iOS/iPadOS environment detected. Initializing Firestore with Long Polling and Memory Cache.");
-    db = initializeFirestore(app, {
-      experimentalForceLongPolling: true,
-      useFetchStreams: false,
-      localCache: memoryLocalCache()
-    });
-  } else {
-    db = getFirestore(app);
-  }
-  
-  console.log("Firebase App initialized successfully inside Customer Portal.");
+  db = getFirestore(app);
+  console.log("Firebase App and Firestore initialized successfully inside Customer Portal.");
 } catch (error) {
-  console.error("Firebase/Firestore failed to initialize in B2C App. Automatically falling back to Local Storage:", error);
+  console.error("Firebase/Firestore failed to initialize in B2C App. Automatically falling back to local storage:", error);
   isFallbackMode = true;
 }
 console.log("APP_IS_FALLBACK_MODE: " + isFallbackMode);
@@ -175,62 +161,9 @@ const initialSettings = {
 
 // Fallback & Sync State Tracking
 const activeSubscriptions = [];
-const localListeners = {};
-
-let isCloudConnected = false;
-let fallbackTimeoutId = null;
-
-// Watchdog functions
-function triggerFallbackActivation() {
-  if (isFallbackMode) return;
-  console.warn("Firestore cloud connection timed out. Activating local fallback mode immediately.");
-  isFallbackMode = true;
-  
-  activeSubscriptions.forEach(sub => {
-    sub.isUsingFallback = true;
-    const subscriptionId = sub.id;
-    
-    const updateTrigger = () => {
-      if (sub.ref.type === "doc") {
-        getDoc(sub.ref).then(snap => {
-          if (sub.onNext) sub.onNext(snap);
-        }).catch(err => {
-          if (sub.onError) sub.onError(err);
-        });
-      } else {
-        getDocs(sub.ref).then(snap => {
-          if (sub.onNext) sub.onNext(snap);
-        }).catch(err => {
-          if (sub.onError) sub.onError(err);
-        });
-      }
-    };
-    
-    if (sub.realUnsub) {
-      try { sub.realUnsub(); } catch (e) { }
-      sub.realUnsub = null;
-    }
-    
-    localListeners[subscriptionId] = updateTrigger;
-    updateTrigger();
-  });
-}
-
-function ensureFallbackTimeoutStarted() {
-  if (isFallbackMode || isCloudConnected || fallbackTimeoutId) return;
-  
-  console.log("Starting Firestore cloud connection watchdog timer (4.0s)...");
-  fallbackTimeoutId = setTimeout(() => {
-    triggerFallbackActivation();
-  }, 4000);
-}
 
 function markCloudConnected() {
-  isCloudConnected = true;
-  if (fallbackTimeoutId) {
-    clearTimeout(fallbackTimeoutId);
-    fallbackTimeoutId = null;
-  }
+  // Cloud connectivity diagnostic logger
 }
 
 const getLocalStorageDataRaw = (key) => {
@@ -525,12 +458,16 @@ export function limit(num) {
 
 // Read wrappers
 export async function getDocs(ref) {
-  ensureFallbackTimeoutStarted();
   const collectionName = ref.type === "query" ? ref.collectionName : ref.path;
 
-  if (!isFallbackMode && ref.realRef) {
+  if (ref.realRef) {
     try {
-      const snap = await realGetDocs(ref.realRef);
+      const docsPromise = realGetDocs(ref.realRef);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Timeout")), 4000)
+      );
+      
+      const snap = await Promise.race([docsPromise, timeoutPromise]);
       markCloudConnected();
 
       // Sync to local cache
@@ -544,7 +481,7 @@ export async function getDocs(ref) {
 
       return snap;
     } catch (error) {
-      console.error(`getDocs failed in Customer App for ${collectionName}. Falling back:`, error);
+      console.warn(`getDocs failed or timed out for ${collectionName}. Falling back to cached data:`, error);
     }
   }
 
@@ -602,21 +539,29 @@ export async function getDocs(ref) {
 }
 
 export async function getDoc(docRef) {
-  ensureFallbackTimeoutStarted();
   const collectionName = docRef.collectionName;
   const docId = docRef.docId;
 
-  if (!isFallbackMode && docRef.realRef) {
+  if (docRef.realRef) {
     try {
-      const snap = await realGetDocs(realCollection(db, collectionName));
+      const docPromise = realGetDoc(docRef.realRef);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Timeout")), 4000)
+      );
+      
+      const snap = await Promise.race([docPromise, timeoutPromise]);
       markCloudConnected();
-      let match = null;
-      snap.forEach(d => {
-        if (d.id === docId) match = d;
-      });
-      if (match) return match;
+
+      if (snap.exists()) {
+        try {
+          const existingData = getLocalStorageDataRaw(collectionName);
+          existingData[snap.id] = { ...snap.data(), id: snap.id };
+          saveLocalStorageCollection(collectionName, existingData);
+        } catch (e) { }
+        return snap;
+      }
     } catch (error) {
-      console.warn(`getDoc settings failed inside B2C app. Falling back.`);
+      console.warn(`getDoc failed or timed out for ${collectionName}/${docId}. Falling back to cached data:`, error);
     }
   }
 
@@ -631,11 +576,12 @@ export async function getDoc(docRef) {
 }
 
 // Write wrappers
+// Write wrappers
 export async function setDoc(docRef, data, options) {
   const collectionName = docRef.collectionName;
   const docId = docRef.docId;
 
-  if (!isFallbackMode && docRef.realRef) {
+  if (docRef.realRef) {
     try {
       const sanitizedData = sanitizeForFirestore(data);
       if (options) {
@@ -646,7 +592,7 @@ export async function setDoc(docRef, data, options) {
       setLocalStorageDoc(collectionName, docId, data);
       return;
     } catch (error) {
-      console.error(`setDoc failed in Customer App for ${collectionName}/${docId}. Falling back:`, error);
+      console.error(`setDoc failed in Cloud for ${collectionName}/${docId}. Falling back:`, error);
     }
   }
 
@@ -656,7 +602,7 @@ export async function setDoc(docRef, data, options) {
 export async function addDoc(collectionRef, data) {
   const collectionName = collectionRef.path;
 
-  if (!isFallbackMode && collectionRef.realRef) {
+  if (collectionRef.realRef) {
     try {
       const sanitizedData = sanitizeForFirestore(data);
       const realDocRef = await realAddDoc(collectionRef.realRef, sanitizedData);
@@ -666,7 +612,7 @@ export async function addDoc(collectionRef, data) {
         path: `${collectionName}/${realDocRef.id}`
       };
     } catch (error) {
-      console.error(`addDoc failed in Customer App for collection ${collectionName}. Falling back:`, error);
+      console.error(`addDoc failed in Cloud for collection ${collectionName}. Falling back:`, error);
     }
   }
 
@@ -681,14 +627,14 @@ export async function updateDoc(docRef, data) {
   const collectionName = docRef.collectionName;
   const docId = docRef.docId;
 
-  if (!isFallbackMode && docRef.realRef) {
+  if (docRef.realRef) {
     try {
       const sanitizedData = sanitizeForFirestore(data);
       await realUpdateDoc(docRef.realRef, sanitizedData);
       updateLocalStorageDoc(collectionName, docId, data);
       return;
     } catch (error) {
-      console.error(`updateDoc failed in Customer App for ${collectionName}/${docId}. Falling back:`, error);
+      console.error(`updateDoc failed in Cloud for ${collectionName}/${docId}. Falling back:`, error);
     }
   }
 
@@ -699,13 +645,13 @@ export async function deleteDoc(docRef) {
   const collectionName = docRef.collectionName;
   const docId = docRef.docId;
 
-  if (!isFallbackMode && docRef.realRef) {
+  if (docRef.realRef) {
     try {
       await realDeleteDoc(docRef.realRef);
       deleteLocalStorageDoc(collectionName, docId);
       return;
     } catch (error) {
-      console.error(`deleteDoc failed in Customer App for ${collectionName}/${docId}. Falling back:`, error);
+      console.error(`deleteDoc failed in Cloud for ${collectionName}/${docId}. Falling back:`, error);
     }
   }
 
@@ -714,7 +660,6 @@ export async function deleteDoc(docRef) {
 
 // Reactive Snapshots Listener Wrapper for Customer Portal
 export function onSnapshot(ref, ...args) {
-  ensureFallbackTimeoutStarted();
   let onNext;
   let onError;
 
@@ -726,7 +671,6 @@ export function onSnapshot(ref, ...args) {
     onError = args[2];
   }
 
-  // Determine if this is a document reference vs collection/query reference
   const isDocRef = ref.type === "doc";
   const collectionName = isDocRef ? ref.collectionName : (ref.type === "query" ? ref.collectionName : ref.path);
   const subscriptionId = `sub_b2c_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -738,7 +682,7 @@ export function onSnapshot(ref, ...args) {
     onNext,
     onError,
     realUnsub: null,
-    isUsingFallback: isFallbackMode
+    isUsingFallback: false
   };
 
   activeSubscriptions.push(subInfo);
@@ -749,135 +693,81 @@ export function onSnapshot(ref, ...args) {
     if (subInfo.realUnsub) {
       try { subInfo.realUnsub(); } catch (e) { }
     }
-    delete localListeners[subscriptionId];
+    if (fallbackTimer) clearTimeout(fallbackTimer);
   };
 
-  // ── Document reference listener (e.g. onSnapshot(doc(null, 'settings', 'store'), cb)) ──
-  if (isDocRef) {
-    const initDocListener = () => {
-      if (isFallbackMode || !ref.realRef) {
-        subInfo.isUsingFallback = true;
-        const updateTrigger = () => {
-          getDoc(ref).then(snap => {
-            if (onNext) onNext(snap);
-          }).catch(err => {
-            if (onError) onError(err);
-          });
-        };
-        localListeners[subscriptionId] = updateTrigger;
-        updateTrigger();
-      } else {
-        subInfo.isUsingFallback = false;
-        try {
-          subInfo.realUnsub = realOnSnapshot(ref.realRef,
-            (snap) => {
-              // Cache the single document in local storage
-              try {
-                if (snap.exists()) {
-                  const existingData = getLocalStorageDataRaw(collectionName);
-                  existingData[snap.id] = { ...snap.data(), id: snap.id };
-                  saveLocalStorageCollection(collectionName, existingData);
-                }
-              } catch (e) { }
-              markCloudConnected();
-
-              if (onNext) onNext(snap);
-            },
-            (error) => {
-              console.error(`realOnSnapshot B2C doc error for ${collectionName}/${ref.docId}. Falling back:`, error);
-              subInfo.isUsingFallback = true;
-              const updateTrigger = () => {
-                getDoc(ref).then(snap => {
-                  if (onNext) onNext(snap);
-                }).catch(err => {
-                  if (onError) onError(err);
-                });
-              };
-              localListeners[subscriptionId] = updateTrigger;
-              updateTrigger();
-            }
-          );
-        } catch (err) {
-          console.warn("Failed to subscribe to B2C doc stream. Using Local Storage listener:", err);
-          subInfo.isUsingFallback = true;
-          const updateTrigger = () => {
-            getDoc(ref).then(snap => {
-              if (onNext) onNext(snap);
-            }).catch(e => {
-              if (onError) onError(e);
-            });
-          };
-          localListeners[subscriptionId] = updateTrigger;
-          updateTrigger();
-        }
-      }
-    };
-
-    initDocListener();
-    return unsubscribe;
-  }
-
-  // ── Collection / Query reference listener ──
-  const initListener = () => {
-    if (isFallbackMode || !ref.realRef) {
-      subInfo.isUsingFallback = true;
-      const updateTrigger = () => {
-        getDocs(ref).then(snap => {
-          if (onNext) onNext(snap);
-        }).catch(err => {
-          if (onError) onError(err);
-        });
-      };
-      localListeners[subscriptionId] = updateTrigger;
-      updateTrigger();
+  const triggerLocalFallback = () => {
+    subInfo.isUsingFallback = true;
+    console.warn(`onSnapshot timed out or failed to connect for ${collectionName}. Loading local cached data.`);
+    if (isDocRef) {
+      getDoc(ref).then(snap => {
+        if (onNext) onNext(snap);
+      }).catch(err => {
+        if (onError) onError(err);
+      });
     } else {
-      subInfo.isUsingFallback = false;
-      try {
-        subInfo.realUnsub = realOnSnapshot(ref.realRef,
-          (snap) => {
-            // Keep local cache perfectly synchronized
-            try {
+      getDocs(ref).then(snap => {
+        if (onNext) onNext(snap);
+      }).catch(err => {
+        if (onError) onError(err);
+      });
+    }
+  };
+
+  let hasReceivedCloudSnapshot = false;
+  const fallbackTimer = setTimeout(() => {
+    if (!hasReceivedCloudSnapshot) {
+      triggerLocalFallback();
+    }
+  }, 4000);
+
+  if (ref.realRef) {
+    try {
+      subInfo.realUnsub = realOnSnapshot(ref.realRef,
+        (snap) => {
+          hasReceivedCloudSnapshot = true;
+          clearTimeout(fallbackTimer);
+          subInfo.isUsingFallback = false;
+          markCloudConnected();
+
+          try {
+            if (isDocRef) {
+              if (snap.exists()) {
+                const existingData = getLocalStorageDataRaw(collectionName);
+                existingData[snap.id] = { ...snap.data(), id: snap.id };
+                saveLocalStorageCollection(collectionName, existingData);
+              }
+            } else {
               const dataObj = {};
               snap.forEach(doc => {
                 dataObj[doc.id] = { ...doc.data(), id: doc.id };
               });
               saveLocalStorageCollection(collectionName, dataObj);
-            } catch (e) { }
-            markCloudConnected();
+            }
+          } catch (e) { }
 
-            if (onNext) onNext(snap);
-          },
-          (error) => {
-            console.error(`realOnSnapshot B2C error for ${collectionName}. Falling back:`, error);
-            subInfo.isUsingFallback = true;
-            const updateTrigger = () => {
-              getDocs(ref).then(snap => {
-                if (onNext) onNext(snap);
-              }).catch(err => {
-                if (onError) onError(err);
-              });
-            };
-            localListeners[subscriptionId] = updateTrigger;
-            updateTrigger();
+          if (onNext) onNext(snap);
+        },
+        (error) => {
+          console.error(`realOnSnapshot error for ${collectionName}. Using fallback:`, error);
+          clearTimeout(fallbackTimer);
+          if (!hasReceivedCloudSnapshot) {
+            triggerLocalFallback();
+          } else {
+            if (onError) onError(error);
           }
-        );
-      } catch (err) {
-        console.warn("Failed to subscribe to B2C cloud stream. Using Local Storage listener:", err);
-        subInfo.isUsingFallback = true;
-        const updateTrigger = () => {
-          getDocs(ref).then(snap => {
-            if (onNext) onNext(snap);
-          }).catch(e => {
-            if (onError) onError(e);
-          });
-        };
-        localListeners[subscriptionId] = updateTrigger;
-        updateTrigger();
-      }
+        }
+      );
+    } catch (err) {
+      console.warn(`Failed to initialize realOnSnapshot for ${collectionName}:`, err);
+      clearTimeout(fallbackTimer);
+      triggerLocalFallback();
     }
-  };
+  } else {
+    clearTimeout(fallbackTimer);
+    triggerLocalFallback();
+  }
 
-  initListener();
   return unsubscribe;
 }
 
@@ -888,7 +778,15 @@ export function getIsFallbackMode() {
 let auth;
 try {
   if (app) {
-    auth = getAuth(app);
+    if (Capacitor.isNativePlatform()) {
+      auth = initializeAuth(app, {
+        persistence: indexedDBLocalPersistence
+      });
+      console.log("Firebase Auth initialized with IndexedDB native local persistence.");
+    } else {
+      auth = getAuth(app);
+      console.log("Firebase Auth initialized with standard persistence.");
+    }
   }
 } catch (error) {
   console.error("Failed to initialize Firebase Auth in B2C Portal:", error);
