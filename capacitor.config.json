@@ -3,6 +3,14 @@
   "appName": "RG Retailer Etnic Wear",
   "webDir": "dist",
   "bundledWebRuntime": false,
+  "server": {
+    "allowNavigation": [
+      "*.firebaseapp.com",
+      "*.googleapis.com",
+      "*.firebasestorage.app",
+      "identitytoolkit.googleapis.com"
+    ]
+  },
   "plugins": {
     "CapacitorHttp": {
       "enabled": false

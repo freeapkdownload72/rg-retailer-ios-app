@@ -12,6 +12,7 @@ import {
 import {
   getFirestore,
   initializeFirestore,
+  memoryLocalCache,
   collection as realCollection,
   doc as realDoc,
   setDoc as realSetDoc,
@@ -49,10 +50,11 @@ try {
      (navigator.userAgent.includes('Macintosh') && navigator.maxTouchPoints > 1));
 
   if (isIOS) {
-    console.log("Firebase Init: iOS/iPadOS environment detected. Initializing Firestore with Long Polling.");
+    console.log("Firebase Init: iOS/iPadOS environment detected. Initializing Firestore with Long Polling and Memory Cache.");
     db = initializeFirestore(app, {
       experimentalForceLongPolling: true,
-      useFetchStreams: false
+      useFetchStreams: false,
+      localCache: memoryLocalCache()
     });
   } else {
     db = getFirestore(app);
@@ -174,6 +176,62 @@ const initialSettings = {
 // Fallback & Sync State Tracking
 const activeSubscriptions = [];
 const localListeners = {};
+
+let isCloudConnected = false;
+let fallbackTimeoutId = null;
+
+// Watchdog functions
+function triggerFallbackActivation() {
+  if (isFallbackMode) return;
+  console.warn("Firestore cloud connection timed out. Activating local fallback mode immediately.");
+  isFallbackMode = true;
+  
+  activeSubscriptions.forEach(sub => {
+    sub.isUsingFallback = true;
+    const subscriptionId = sub.id;
+    
+    const updateTrigger = () => {
+      if (sub.ref.type === "doc") {
+        getDoc(sub.ref).then(snap => {
+          if (sub.onNext) sub.onNext(snap);
+        }).catch(err => {
+          if (sub.onError) sub.onError(err);
+        });
+      } else {
+        getDocs(sub.ref).then(snap => {
+          if (sub.onNext) sub.onNext(snap);
+        }).catch(err => {
+          if (sub.onError) sub.onError(err);
+        });
+      }
+    };
+    
+    if (sub.realUnsub) {
+      try { sub.realUnsub(); } catch (e) { }
+      sub.realUnsub = null;
+    }
+    
+    localListeners[subscriptionId] = updateTrigger;
+    updateTrigger();
+  });
+}
+
+function ensureFallbackTimeoutStarted() {
+  if (isFallbackMode || isCloudConnected || fallbackTimeoutId) return;
+  
+  console.log("Starting Firestore cloud connection watchdog timer (4.0s)...");
+  fallbackTimeoutId = setTimeout(() => {
+    triggerFallbackActivation();
+  }, 4000);
+}
+
+function markCloudConnected() {
+  isCloudConnected = true;
+  if (fallbackTimeoutId) {
+    clearTimeout(fallbackTimeoutId);
+    fallbackTimeoutId = null;
+  }
+}
 
 const getLocalStorageDataRaw = (key) => {
   const fullKey = `rg_billing_${key}`;
@@ -467,11 +525,13 @@ export function limit(num) {
 
 // Read wrappers
 export async function getDocs(ref) {
+  ensureFallbackTimeoutStarted();
   const collectionName = ref.type === "query" ? ref.collectionName : ref.path;
 
   if (!isFallbackMode && ref.realRef) {
     try {
       const snap = await realGetDocs(ref.realRef);
+      markCloudConnected();
 
       // Sync to local cache
       try {
@@ -542,12 +602,14 @@ export async function getDocs(ref) {
 }
 
 export async function getDoc(docRef) {
+  ensureFallbackTimeoutStarted();
   const collectionName = docRef.collectionName;
   const docId = docRef.docId;
 
   if (!isFallbackMode && docRef.realRef) {
     try {
       const snap = await realGetDocs(realCollection(db, collectionName));
+      markCloudConnected();
       let match = null;
       snap.forEach(d => {
         if (d.id === docId) match = d;
@@ -652,6 +714,7 @@ export async function deleteDoc(docRef) {
 
 // Reactive Snapshots Listener Wrapper for Customer Portal
 export function onSnapshot(ref, ...args) {
+  ensureFallbackTimeoutStarted();
   let onNext;
   let onError;
 
@@ -716,6 +779,7 @@ export function onSnapshot(ref, ...args) {
                   saveLocalStorageCollection(collectionName, existingData);
                 }
               } catch (e) { }
+              markCloudConnected();
 
               if (onNext) onNext(snap);
             },
@@ -779,6 +843,7 @@ export function onSnapshot(ref, ...args) {
               });
               saveLocalStorageCollection(collectionName, dataObj);
             } catch (e) { }
+            markCloudConnected();
 
             if (onNext) onNext(snap);
           },
