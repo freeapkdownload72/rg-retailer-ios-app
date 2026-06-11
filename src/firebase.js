@@ -647,7 +647,9 @@ export function onSnapshot(ref, ...args) {
     onError = args[2];
   }
 
-  const collectionName = ref.type === "query" ? ref.collectionName : ref.path;
+  // Determine if this is a document reference vs collection/query reference
+  const isDocRef = ref.type === "doc";
+  const collectionName = isDocRef ? ref.collectionName : (ref.type === "query" ? ref.collectionName : ref.path);
   const subscriptionId = `sub_b2c_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
   const subInfo = {
@@ -671,6 +673,71 @@ export function onSnapshot(ref, ...args) {
     delete localListeners[subscriptionId];
   };
 
+  // ── Document reference listener (e.g. onSnapshot(doc(null, 'settings', 'store'), cb)) ──
+  if (isDocRef) {
+    const initDocListener = () => {
+      if (isFallbackMode || !ref.realRef) {
+        subInfo.isUsingFallback = true;
+        const updateTrigger = () => {
+          getDoc(ref).then(snap => {
+            if (onNext) onNext(snap);
+          }).catch(err => {
+            if (onError) onError(err);
+          });
+        };
+        localListeners[subscriptionId] = updateTrigger;
+        updateTrigger();
+      } else {
+        subInfo.isUsingFallback = false;
+        try {
+          subInfo.realUnsub = realOnSnapshot(ref.realRef,
+            (snap) => {
+              // Cache the single document in local storage
+              try {
+                if (snap.exists()) {
+                  const existingData = getLocalStorageDataRaw(collectionName);
+                  existingData[snap.id] = { ...snap.data(), id: snap.id };
+                  saveLocalStorageCollection(collectionName, existingData);
+                }
+              } catch (e) { }
+
+              if (onNext) onNext(snap);
+            },
+            (error) => {
+              console.error(`realOnSnapshot B2C doc error for ${collectionName}/${ref.docId}. Falling back:`, error);
+              subInfo.isUsingFallback = true;
+              const updateTrigger = () => {
+                getDoc(ref).then(snap => {
+                  if (onNext) onNext(snap);
+                }).catch(err => {
+                  if (onError) onError(err);
+                });
+              };
+              localListeners[subscriptionId] = updateTrigger;
+              updateTrigger();
+            }
+          );
+        } catch (err) {
+          console.warn("Failed to subscribe to B2C doc stream. Using Local Storage listener:", err);
+          subInfo.isUsingFallback = true;
+          const updateTrigger = () => {
+            getDoc(ref).then(snap => {
+              if (onNext) onNext(snap);
+            }).catch(e => {
+              if (onError) onError(e);
+            });
+          };
+          localListeners[subscriptionId] = updateTrigger;
+          updateTrigger();
+        }
+      }
+    };
+
+    initDocListener();
+    return unsubscribe;
+  }
+
+  // ── Collection / Query reference listener ──
   const initListener = () => {
     if (isFallbackMode || !ref.realRef) {
       subInfo.isUsingFallback = true;
