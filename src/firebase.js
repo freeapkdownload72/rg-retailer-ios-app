@@ -11,6 +11,7 @@ import {
 } from "firebase/auth";
 import {
   getFirestore,
+  initializeFirestore,
   collection as realCollection,
   doc as realDoc,
   setDoc as realSetDoc,
@@ -41,7 +42,21 @@ let isFallbackMode = false;
 
 try {
   app = initializeApp(firebaseConfig);
-  db = getFirestore(app);
+  
+  // Detect if running inside iOS/iPadOS (native Capacitor app or Safari browser)
+  const isIOS = typeof window !== 'undefined' && 
+    (/iPad|iPhone|iPod/i.test(navigator.userAgent) || 
+     (navigator.userAgent.includes('Macintosh') && navigator.maxTouchPoints > 1));
+
+  if (isIOS) {
+    console.log("Firebase Init: iOS/iPadOS environment detected. Initializing Firestore with Long Polling.");
+    db = initializeFirestore(app, {
+      experimentalForceLongPolling: true
+    });
+  } else {
+    db = getFirestore(app);
+  }
+  
   console.log("Firebase App initialized successfully inside Customer Portal.");
 } catch (error) {
   console.error("Firebase/Firestore failed to initialize in B2C App. Automatically falling back to Local Storage:", error);
