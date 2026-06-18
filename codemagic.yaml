@@ -45,10 +45,13 @@ workflows:
       - name: Apply code signing profiles to Xcode project
         script: |
           xcode-project use-profiles
-      - name: Increment build number
+      - name: Increment build and marketing version
         script: |
           cd ios/App
+          PACKAGE_VERSION=$(node -p "require('../../package.json').version")
+          agvtool new-marketing-version $PACKAGE_VERSION
           agvtool new-version -all $BUILD_NUMBER
+          echo "Marketing version set to: $PACKAGE_VERSION"
           echo "Build number set to: $BUILD_NUMBER"
       - name: Build iOS IPA
         script: |
