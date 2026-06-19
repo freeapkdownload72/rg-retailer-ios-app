@@ -112,7 +112,6 @@ function MyCoupons({ availableCoupons = [], activeCoupon, onApplyCoupon, onClose
                 borderRadius: '10px',
                 border: '1.5px solid var(--phone-card-border)',
                 background: 'var(--phone-bg)',
-                color: 'var(--phone-text-title)',
                 fontSize: '14px',
                 fontWeight: 700,
                 color: 'var(--phone-text-title)',
